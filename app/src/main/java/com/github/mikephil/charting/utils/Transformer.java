@@ -179,6 +179,11 @@ public class Transformer {
         }
         float[] valuePoints = valuePointsForGenerateTransformedValuesLine;
 
+        //AC - This is to prevent out of bounds exception on data.getEntryForIndex below
+        if(data.getEntryCount() == 0){
+            return valuePoints;
+        }
+
         for (int j = 0; j < count; j += 2) {
 
             Entry e = data.getEntryForIndex(j / 2 + min);

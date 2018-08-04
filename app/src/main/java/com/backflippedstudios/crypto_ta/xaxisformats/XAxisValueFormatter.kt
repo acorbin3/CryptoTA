@@ -13,146 +13,64 @@ import java.text.DecimalFormat
  * Created by C0rbin on 12/7/2017.
  */
 class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
-    private fun hour12H(hour: Int?): Int{
-        var convertedHour: Int? = hour?.plus(1) //This is because time starts at 00:00
-
-        if(convertedHour!! >12){
-            return convertedHour?.minus(12)!!
-        }else{
-            return convertedHour
-        }
-    }
     //Value is the x position of what was inserted
     override fun getFormattedValue(value: Float, axis: AxisBase?): String {
+        try {
+            if(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts != null
+                    && MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.isEmpty == false
+                    && value.toInt() < MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount!!
+                    && MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount!! > 0) {
+    //            println("Value: $value Tick Count: ${MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount}")
 
-        if(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts != null
-                && value < MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount!!) {
-//            println("Value: $value Tick Count: ${MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount}")
 
-            val curTick: Tick? = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.getTick(value.toInt())
-            val xLabelInterval: Int = 20
-            var timeStr = ""
+                    val curTick: Tick? = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.getTick(value.toInt())
+                    val xLabelInterval: Int = 20
+                    var timeStr = ""
 
-            //If we are not at the end or beginning lets see if we need to add the date text
-            if(!value.equals(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount)
-                && !(value == 1F || value == 0F) && value > 1F){
-                val lastTick: Tick? = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.getTick(value.toInt()-1)
-                //When the hour shifts from 23 to 00 its time to add in the date based on the current tick
-//                println("last:${lastTick?.endTime?.hour}  current: ${curTick?.endTime?.hour} ")
-                if(lastTick?.endTime?.hour == 23
-                        && curTick?.endTime?.hour == 0) {
-                    timeStr= curTick.endTime.month.toString() + "/" + curTick.endTime.year
-                    when (MainActivity.data.saved_time_period){
-                        DataSource.Interval._1MIN.ordinal -> {
+
+                    //Format time
+                    if (value.rem(xLabelInterval) == 0F) {
+
+
+    //                val hour = curTick?.beginTime?.hour
+    //                val min = curTick?.beginTime?.minute
+
+    //                println(" i $value time: ${curTick?.beginTime.toString()}" )
+
+
+                        when (MainActivity.data.saved_time_period) {
+                            DataSource.Interval._1MIN.ordinal,  DataSource.Interval._3MIN.ordinal,
+                            DataSource.Interval._5MIN.ordinal,  DataSource.Interval._15MIN.ordinal,
+                            DataSource.Interval._30MIN.ordinal, DataSource.Interval._1HOUR.ordinal,
+                            DataSource.Interval._2HOUR.ordinal, DataSource.Interval._4HOUR.ordinal,
+                            DataSource.Interval._6HOUR.ordinal -> {
+                                timeStr = formatMonthDateTime(curTick)
+                            }
+
+                            DataSource.Interval._12HOUR.ordinal, DataSource.Interval._1DAY.ordinal,
+                            DataSource.Interval._3DAY.ordinal,   DataSource.Interval._1WEEK.ordinal-> {
+                                timeStr = formatMonthDateYearTime(curTick)
+                            }
 
                         }
-                        DataSource.Interval._3MIN.ordinal -> {
-                        }
-                        DataSource.Interval._5MIN.ordinal -> {
-                        }
-                        DataSource.Interval._15MIN.ordinal -> {
-                        }
-                        DataSource.Interval._30MIN.ordinal -> {
-                        }
-                        DataSource.Interval._1HOUR.ordinal -> {}
-                        DataSource.Interval._2HOUR.ordinal -> {}
-                        DataSource.Interval._6HOUR.ordinal -> {}
-                        DataSource.Interval._12HOUR.ordinal -> {}
-                        DataSource.Interval._1DAY.ordinal -> {}
-                        DataSource.Interval._3DAY.ordinal -> {}
-                        DataSource.Interval._1WEEK.ordinal -> {}
 
+                        return timeStr
+                    } else {
+                        return ""
                     }
-                }
+
+
             }
-            //Format to insure numbers are visible.
-            //This really comes down to time frame.
-
-            //Check if date needs to be added
-
-
-
-            //Format time
-            if (value.rem(xLabelInterval) == 0F) {
-
-                val df = DecimalFormat("00")
-//                val hour = curTick?.beginTime?.hour
-//                val min = curTick?.beginTime?.minute
-
-//                println(" i $value time: ${curTick?.beginTime.toString()}" )
-
-
-                when (MainActivity.data.saved_time_period){
-                    DataSource.Interval._1MIN.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._3MIN.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._5MIN.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._15MIN.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._30MIN.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._1HOUR.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._2HOUR.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._6HOUR.ordinal -> {
-                        timeStr = formatMonthDateTime(curTick, timeStr, df)
-                    }
-                    DataSource.Interval._12HOUR.ordinal -> {timeStr = formatMonthDateYearTime(curTick, timeStr, df)}
-                    DataSource.Interval._1DAY.ordinal -> {timeStr = formatMonthDateYearTime(curTick, timeStr, df)}
-                    DataSource.Interval._3DAY.ordinal -> {timeStr = formatMonthDateYearTime(curTick, timeStr, df)}
-                    DataSource.Interval._1WEEK.ordinal -> {timeStr = formatMonthDateYearTime(curTick, timeStr, df)}
-
+            else{
+                println("TS was null or tickCount was bad")
+                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts == null){
+                    println("TS was null!!")
                 }
-
-                return timeStr
-            }else{
                 return ""
             }
-
-        }
-        else{
-            println("TS was null or tickCount was bad")
-            if(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts == null){
-                println("TS was null!!")
-            }
+        }catch (e: Exception){
             return ""
         }
-    }
-
-    private fun formatMonthDateTime(curTick: Tick?, timeStr: String, df: DecimalFormat): String {
-        var timeStr1 = timeStr
-        val monthStr = curTick?.beginTime?.month.toString() + "-" + curTick?.beginTime?.dayOfMonth.toString()
-        timeStr1 = df.format(hour12H(curTick?.beginTime?.hour)).toString() + ":" + df.format(curTick?.beginTime?.minute).toString()
-        var amPM = "AM"
-        if(curTick?.beginTime?.hour!! > 11){
-            amPM = "PM"
-        }
-        timeStr1 = "$timeStr1 $amPM\n$monthStr"
-        return timeStr1
-    }
-
-    private fun formatMonthDateYearTime(curTick: Tick?, timeStr: String, df: DecimalFormat): String {
-        var timeStr1 = timeStr
-        val monthStr = curTick?.beginTime?.month.toString() +
-                "-" + curTick?.beginTime?.dayOfMonth.toString() +
-                "-" + curTick?.beginTime?.year
-        timeStr1 = df.format(hour12H(curTick?.beginTime?.hour)).toString() + ":" + df.format(curTick?.beginTime?.minute).toString()
-        var amPM = "AM"
-        if(curTick?.beginTime?.hour!! > 11){
-            amPM = "PM"
-        }
-        timeStr1 = "$timeStr1 $amPM\n$monthStr"
-        return timeStr1
     }
 
     constructor(parcel: Parcel) : this() {
@@ -174,6 +92,44 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
 
         override fun newArray(size: Int): Array<XAxisValueFormatter?> {
             return arrayOfNulls(size)
+        }
+
+        fun formatMonthDateTime(curTick: Tick?): String {
+            var timeStr1 = ""
+            val df = DecimalFormat("00")
+            val monthStr = curTick?.beginTime?.month.toString() + "-" + curTick?.beginTime?.dayOfMonth.toString()
+            timeStr1 = df.format(hour12H(curTick?.beginTime?.hour)).toString() + ":" + df.format(curTick?.beginTime?.minute).toString()
+            var amPM = "AM"
+            if(curTick?.beginTime?.hour!! > 11){
+                amPM = "PM"
+            }
+            timeStr1 = "$timeStr1 $amPM\n$monthStr"
+            return timeStr1
+        }
+
+        fun hour12H(hour: Int?): Int{
+            var convertedHour: Int? = hour?.plus(1) //This is because time starts at 00:00
+
+            if(convertedHour!! >12){
+                return convertedHour?.minus(12)!!
+            }else{
+                return convertedHour
+            }
+        }
+
+        fun formatMonthDateYearTime(curTick: Tick?): String {
+            var timeStr1 = ""
+            val df = DecimalFormat("00")
+            val monthStr = curTick?.beginTime?.month.toString() +
+                    "-" + curTick?.beginTime?.dayOfMonth.toString() +
+                    "-" + curTick?.beginTime?.year
+            timeStr1 = df.format(CREATOR.hour12H(curTick?.beginTime?.hour)).toString() + ":" + df.format(curTick?.beginTime?.minute).toString()
+            var amPM = "AM"
+            if(curTick?.beginTime?.hour!! > 11){
+                amPM = "PM"
+            }
+            timeStr1 = "$timeStr1 $amPM\n$monthStr"
+            return timeStr1
         }
     }
 }
