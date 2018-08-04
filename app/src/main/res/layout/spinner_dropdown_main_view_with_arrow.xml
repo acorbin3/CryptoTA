@@ -15,7 +15,7 @@
         android:paddingLeft="0dp"
         android:paddingRight="0dp"
         android:textColor="@color/colorText"
-        android:textSize="14sp" />
+        android:textSize="18sp" />
 
     <ImageView
         android:id="@+id/imageView4"

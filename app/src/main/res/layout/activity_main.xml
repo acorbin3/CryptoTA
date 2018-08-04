@@ -17,7 +17,7 @@
             android:id="@+id/swipe_to_refresh_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="25dp">
+            android:paddingBottom="30dp">
 
             <android.support.v7.widget.RecyclerView
                 android:id="@+id/all_charts_recycler_view"
@@ -27,6 +27,29 @@
                 android:clipToPadding="false"
                 android:padding="0dp" />
         </android.support.v4.widget.SwipeRefreshLayout>
+
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/live_prices_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/tv_live_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:maxLines="1"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/tv_usd_value" />
+
+            <TextView
+                android:id="@+id/tv_usd_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="15dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </android.support.constraint.ConstraintLayout>
 
         <android.support.v7.widget.RecyclerView
             android:id="@+id/indicators_recycler_view"
@@ -40,7 +63,7 @@
 
         <android.support.constraint.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="30dp"
             android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="@+id/swipe_to_refresh_layout">
 
@@ -61,79 +84,61 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            app:layout_constraintBottom_toBottomOf="@+id/swipe_to_refresh_layout">
+            app:layout_constraintBottom_toBottomOf="@+id/swipe_to_refresh_layout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <ImageView
+                android:id="@+id/iv_share_screenshot"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="main logo"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@android:drawable/ic_menu_share" />
 
             <Spinner
                 android:id="@+id/spinner_time_period"
                 android:layout_width="wrap_content"
-                android:layout_height="24dp"
+                android:layout_height="30dp"
 
                 android:background="@null"
                 android:popupBackground="@color/colorDialogBackground"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintRight_toLeftOf="@+id/spinner_coin_type"
-                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <Spinner
                 android:id="@+id/spinner_coin_type"
-                android:layout_width="wrap_content"
-                android:layout_height="24dp"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
 
                 android:background="@null"
                 android:popupBackground="@color/colorDialogBackground"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintRight_toLeftOf="@+id/spinner_exchange_type"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth_max="150dp"
+                app:layout_constraintWidth_min="100dp" />
 
             <Spinner
                 android:id="@+id/spinner_exchange_type"
-                android:layout_width="wrap_content"
-                android:layout_height="24dp"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
 
                 android:background="@null"
                 android:popupBackground="@color/colorDialogBackground"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintRight_toLeftOf="@+id/spinner_base_currancy"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <Spinner
-                android:id="@+id/spinner_base_currancy"
-                android:layout_width="wrap_content"
-                android:layout_height="24dp"
-
-                android:background="@null"
-                android:popupBackground="@color/colorDialogBackground"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintRight_toLeftOf="@+id/tv_live_price"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <TextView
-                android:id="@+id/tv_live_price"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoText="true"
-                android:maxLines="1"
-                android:padding="4dp"
-                android:text="@string/live_coin"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintRight_toLeftOf="@+id/tv_usd_value"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <TextView
-                android:id="@+id/tv_usd_value"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="4dp"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/b_drawer"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintRight_toLeftOf="@+id/b_drawer"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth_max="100dp"
+                app:layout_constraintWidth_min="100dp" />
 
             <ImageView
                 android:id="@+id/b_drawer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="1dp"
                 android:contentDescription="@string/indicator_drawer_button"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintRight_toRightOf="parent"

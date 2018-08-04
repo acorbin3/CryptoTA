@@ -34,11 +34,11 @@ data class Overlay(val kind: Kind){
     // The values represents each of the editable text items that an overlay can edit. A positive
     // value will mean that it can be visible and editable
     var values: Array<Values> = Array(4,{ _ -> Values()})
+    var valuesScaleFactor: Int = 1
     var selected: Boolean = false
     var allIndicatorInfo: Array<IndicatorInfo> = Array(8,{_ -> IndicatorInfo() })
     var kindData: KindData
     //This is attempt to have 1 location for all the configuration
-    //TODO - Some how to combine values in 1 location where the list can be accessed
     init {
         when(this.kind){
             Overlay.Kind.Bollinger_Bands ->{
@@ -52,9 +52,6 @@ data class Overlay(val kind: Kind){
                 kindData = KindData(true,false,Kind.Bollinger_Bands, -1,-1, true)
             }
             Kind.D_BB_Timeframe ->{
-                values[0].value = 20.0
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Timeframe"
                 kindData = KindData(false,true,Kind.Bollinger_Bands,0)
             }
@@ -86,16 +83,10 @@ data class Overlay(val kind: Kind){
                 kindData = KindData(true,false,Kind.Keltner_Channel, -1,-1, true)
             }
             Overlay.Kind.D_KC_Timeframe -> {
-                values[0].value = 12.0
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Timeframe"
                 kindData = KindData(false,true,Kind.Keltner_Channel,0)
             }
             Overlay.Kind.D_KC_Ratio -> {
-                values[0].value = 2.0
-                values[0].min = 1.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Ratio"
                 kindData = KindData(false,true,Kind.Keltner_Channel,1)
             }
@@ -119,40 +110,54 @@ data class Overlay(val kind: Kind){
                 allIndicatorInfo[0].label = "Simple Moving Average"
                 kindData = KindData(true,false,Kind.Simple_Moving_Avg, -1,-1, true)
             }
+            Overlay.Kind.D_SMA_Timeframe -> {
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Simple_Moving_Avg,0)
+            }
+            Overlay.Kind.D_SMA_COLOR ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Simple_Moving_Avg,-1,0)
+            }
             Overlay.Kind.Exponential_MA ->{
                 values[0].value = 20.0
                 values[0].min = 2.0
                 values[0].max = 50.0
                 this.timeFrame = 0
                 allIndicatorInfo[0].label = "Exp Moving Average"
-                kindData = KindData(true,false,Kind.Exponential_MA)
+                kindData = KindData(true,false,Kind.Exponential_MA,-1,-1,true)
             }
+            Overlay.Kind.D_EMA_Timeframe -> {
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Exponential_MA,0)
+            }
+            Overlay.Kind.D_EMA_COLOR ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Exponential_MA,-1,0)
+            }
+
             Overlay.Kind.Parabolic_SAR ->{
                 this.valuesAreInts = false
                 values[0].value = .025
                 values[0].min = .005
-                values[0].max = 3.0
+                values[0].max = 0.5
                 values[1].value = .050
                 values[1].min = .005
-                values[1].max = 3.0
+                values[1].max = 0.5
+                this.valuesScaleFactor = 1000
                 this.accelerationFactor = 0
                 this.maximumAcceleration = 1
                 allIndicatorInfo[0].label = "Parabolic SAR"
                 kindData = KindData(true,false,Kind.Parabolic_SAR, -1,-1, true)
             }
             Overlay.Kind.D_P_SAR_ACC_FAC -> {
+                this.valuesAreInts = false
                 allIndicatorInfo[0].label = "Acceleration Factor"
-                values[0].value = .025
-                values[0].min = .005
-                values[0].max = 3.0
-                kindData = KindData(false,true,Kind.Parabolic_SAR,1)
+                kindData = KindData(false,true,Kind.Parabolic_SAR,0)
             }
             Overlay.Kind.D_P_SAR_MAX_ACC -> {
+                this.valuesAreInts = false
                 allIndicatorInfo[0].label = "Max Accelerator"
-                values[0].value = .050
-                values[0].min = .005
-                values[0].max = 3.0
-                kindData = KindData(false,true,Kind.Parabolic_SAR,2)
+                kindData = KindData(false,true,Kind.Parabolic_SAR,1)
             }
             Overlay.Kind.D_P_SAR_COLOR ->{
                 allIndicatorInfo[0].label = "Dot Color"
@@ -171,18 +176,12 @@ data class Overlay(val kind: Kind){
                 kindData = KindData(true,false,Kind.Chandelier_Exit, -1,-1, true)
             }
             Overlay.Kind.D_CE_Timeframe -> {
-                values[0].value = 22.0
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Timeframe"
-                kindData = KindData(false,true,Kind.Chandelier_Exit,1)
+                kindData = KindData(false,true,Kind.Chandelier_Exit,0)
             }
             Overlay.Kind.D_CE_Ratio -> {
-                values[0].value = 3.0
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Ratio"
-                kindData = KindData(false,true,Kind.Chandelier_Exit,2)
+                kindData = KindData(false,true,Kind.Chandelier_Exit,1)
             }
             Kind.D_CE_Color ->{
                 allIndicatorInfo[0].label = "Line Color"
@@ -213,32 +212,20 @@ data class Overlay(val kind: Kind){
                 kindData = KindData(true,false,Kind.Ichimoku_Cloud, -1,-1, true)
             }
             Overlay.Kind.D_Ich_Cloud_Conversion -> {
-                values[0].value = 9.0 //ConversionPeriod
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Conversion"
                 kindData = KindData(false,true,Kind.Ichimoku_Cloud,0,2)
             }
             Overlay.Kind.D_Ich_Cloud_Base -> {
-                values[0].value = 26.0 //BasePeriod
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Base"
                 kindData = KindData(false,true,Kind.Ichimoku_Cloud,1,3)
             }
 
             Overlay.Kind.D_Ich_Cloud_Lead -> {
-                values[0].value = 52.0//LeadingPeriod
-                values[0].min = 2.0
-                values[0].max = 70.0
                 allIndicatorInfo[0].label = "Leading"
                 kindData = KindData(false,true,Kind.Ichimoku_Cloud,2,-1)
             }
 
             Overlay.Kind.D_Ich_Cloud_Lagging -> {
-                values[0].value = 26.0 //LaggingPeriod
-                values[0].min = 2.0
-                values[0].max = 50.0
                 allIndicatorInfo[0].label = "Lagging"
                 kindData = KindData(false,true,Kind.Ichimoku_Cloud,3,4)
             }
@@ -253,10 +240,18 @@ data class Overlay(val kind: Kind){
             Overlay.Kind.ZigZag ->{
                 values[0].value = 7.0
                 values[0].min = 0.5
-                values[0].max = 50.0
+                values[0].max = 20.0
                 this.thresholdPercent = 0
                 allIndicatorInfo[0].label = "Zig Zag"
-                kindData = KindData(true,false,Kind.ZigZag)
+                kindData = KindData(true,false,Kind.ZigZag,-1,-1, true)
+            }
+            Overlay.Kind.D_ZigZag_Timeframe ->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.ZigZag,0)
+            }
+            Overlay.Kind.D_ZigZag_COLOR ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.ZigZag,-1,0)
             }
             Overlay.Kind.AroonOsci -> {
                 values[0].value = 14.0
@@ -314,6 +309,11 @@ data class Overlay(val kind: Kind){
                 this.separateChart = true
                 this.chartType = ChartStatusData.Type.VOLUME_CHART
                 kindData = KindData(true,false,Kind.Volume_Bars)
+            }
+            Overlay.Kind.Notifications ->{
+                kindData = KindData(true,false,Kind.Notifications,-1,-1, false)
+                this.selected = true
+
             }
         }
     }
@@ -430,8 +430,6 @@ data class Overlay(val kind: Kind){
         D_AroonDown,
 
         AroonOsci,
-//        D_AroonOsciLine(false, true, true),
-//        D_AroonOsciFilled(false, true, true),
 
         Bollinger_Bands,
         D_BB_Timeframe,
@@ -447,7 +445,12 @@ data class Overlay(val kind: Kind){
         D_KC_Lower,
 
         Simple_Moving_Avg,
+        D_SMA_Timeframe,
+        D_SMA_COLOR,
+
         Exponential_MA,
+        D_EMA_Timeframe,
+        D_EMA_COLOR,
 
         Parabolic_SAR,
         D_P_SAR_ACC_FAC,
@@ -468,7 +471,11 @@ data class Overlay(val kind: Kind){
         D_Ich_Cloud_Lead_B,
 
         ZigZag,
+        D_ZigZag_Timeframe,
+        D_ZigZag_COLOR,
         Exponential_MA_Ribbon,
+
+        Notifications
     }
 
 }

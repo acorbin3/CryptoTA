@@ -8,6 +8,7 @@ class ChartStatusData(var status: Status, var type: Type){
         UPDATE_FAILED,
         UPDATE_CANDLESTICKS,
         UPDATE_OVERLAYS,
+        INTERNET_OUT
     }
 
     enum class Type{

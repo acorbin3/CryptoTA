@@ -140,6 +140,7 @@ class TechnicalAnalysis {
         volumeBarData.clear()
         aroonUpIndicatorData.clear()
         aroonDownIndicatorData.clear()
+        aroonOscillatorData.clear()
     }
 
 
@@ -436,7 +437,7 @@ class TechnicalAnalysis {
 
     }
 
-    private fun isIchCloudSelected(): Boolean {
+    fun isIchCloudSelected(): Boolean {
         var ichCloudSelected: Boolean = false
         for (overlay in OverlayAdapter.data.list) {
             if ((overlay.kind == Ichimoku_Cloud) and overlay.selected) {

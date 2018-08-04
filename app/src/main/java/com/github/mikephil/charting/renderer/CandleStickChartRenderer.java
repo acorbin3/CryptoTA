@@ -69,6 +69,10 @@ public class CandleStickChartRenderer extends LineScatterCandleRadarRenderer {
         // draw the body
         for (int j = mXBounds.min; j <= mXBounds.range + mXBounds.min; j++) {
 
+
+            //AC - prevent crash wen dataset is null
+            if(dataSet.getEntryCount() == 0)
+                continue;
             // get the entry
             CandleEntry e = dataSet.getEntryForIndex(j);
 

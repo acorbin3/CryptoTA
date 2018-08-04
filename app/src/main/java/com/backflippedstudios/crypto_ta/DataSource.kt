@@ -2,6 +2,7 @@ package com.backflippedstudios.crypto_ta
 
 import android.util.JsonReader
 import android.util.JsonToken
+import com.google.android.gms.tasks.Task
 import org.ta4j.core.BaseTick
 import org.ta4j.core.Decimal
 import org.ta4j.core.Tick
@@ -15,6 +16,10 @@ import java.util.*
 import javax.net.ssl.HttpsURLConnection
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
+
 
 /**
  * Created by C0rbin on 11/15/2017.
@@ -37,11 +42,12 @@ class DataSource {
         _1WEEK(60*60*24*7)
     }
     data class Exchange(val exchange: String, val paring: String, val active: Boolean, val url: String)
-    data class Asset(val id: Int, val symboal: String, val name: String, val FiatLegalTender: Boolean, val url: String){
+    data class Asset(val id: Int, val symbol: String, val name: String, val FiatLegalTender: Boolean, val url: String){
         var exchanges: ArrayList<Exchange> = ArrayList()
     }
     object data{
         var coins: HashMap<String,Asset> = HashMap()
+        var db = FirebaseFirestore.getInstance()
     }
 
     fun getData(coin: String, exchange: String, currency: String, interval: Interval) : ArrayList<Tick> {
@@ -58,10 +64,10 @@ class DataSource {
             //println("Start: " + start.fromCalendar(startCal))
             //println("End: " + end.fromCalendar(endCal))
             //val url = URL("https://api.gdax.com/products/ETH-USD/candles?granularity="+granularity)
-            var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter({
+            var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
                 it.paring.contains(currency.toLowerCase())&&
-                it.exchange.toLowerCase() == exchange.toLowerCase()
-            })
+                        it.exchange.toLowerCase() == exchange.toLowerCase()
+            }
 
             if(exchangeData?.size == 0){
                 return ticks
@@ -165,12 +171,12 @@ class DataSource {
     }
 
     fun getCurrentValue(coin: String, exchange: String, currency: String) : Float{
-        var endPrice: Float = 0.0F
+        var endPrice = 0.0F
 
-        var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter({
+        var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
             it.paring.contains(currency.toLowerCase())&&
                     it.exchange.toLowerCase() == exchange.toLowerCase()
-        })
+        }
         if(exchangeData?.size ?: 0 == 0){
             return 0.0F
         }
@@ -178,29 +184,34 @@ class DataSource {
 
         var url = URL(urlStr)
 //        println("Getting current price: $urlStr. Coin $coin currency $currency exchange $exchange")
-        val connection = url.openConnection() as HttpsURLConnection
-        connection.requestMethod = "GET"
-        if (connection.responseCode == 200) {
-            // Success
-            // Further processing here
+        try {
+            val connection = url.openConnection() as HttpsURLConnection
+            connection.requestMethod = "GET"
+
+            if (connection.responseCode == 200) {
+                // Success
+                // Further processing here
 //            println("Response: " + connection.responseCode)
-            val responseBody = connection.inputStream
-            val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-            //println(responseBodyReader)
-            val jsonReader = JsonReader(responseBodyReader)
-            //Result:
-            //{"result":{"price":0.0162},"allowance":{"cost":1872372,"remaining":7942076584}}
-            jsonReader.beginObject()//Start results object
-            jsonReader.nextName()
-            jsonReader.beginObject()//Start price object
-            jsonReader.nextName()
-            endPrice = jsonReader.nextDouble().toFloat()
+                val responseBody = connection.inputStream
+                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
+                //println(responseBodyReader)
+                val jsonReader = JsonReader(responseBodyReader)
+                //Result:
+                //{"result":{"price":0.0162},"allowance":{"cost":1872372,"remaining":7942076584}}
+                jsonReader.beginObject()//Start results object
+                jsonReader.nextName()
+                jsonReader.beginObject()//Start price object
+                jsonReader.nextName()
+                endPrice = jsonReader.nextDouble().toFloat()
 
 //            println("Found price: $endPrice")
-            jsonReader.close()
-            connection.disconnect()
-        } else {
-            // Error handling code goes here
+                jsonReader.close()
+                connection.disconnect()
+            } else {
+                // Error handling code goes here
+            }
+        }catch (e: Exception){
+
         }
 
 
@@ -227,94 +238,200 @@ class DataSource {
     }
     fun initExchangesForCoin(coinSymbol: String){
         //Check to see if we need to get exchanges only if coin doesnt have exchange list already
-        if(data.coins[coinSymbol]?.exchanges?.count()!! > 0) return
-
-        var url = URL("https://api.cryptowat.ch/assets/"+coinSymbol)
-        val connection = url.openConnection() as HttpsURLConnection
-        connection.requestMethod = "GET"
-        if (connection.responseCode == 200) {
-            // Success
-            // Further processing here
-            println("Response: " + connection.responseCode)
-            val responseBody = connection.inputStream
-            val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-            //println(responseBodyReader)
-            val jsonReader = JsonReader(responseBodyReader)
-            jsonReader.beginObject()//Start results object
-            jsonReader.nextName() //result
-            jsonReader.beginObject()//Start results object
-            jsonReader.nextName()
-            jsonReader.nextInt() //id item
-            jsonReader.nextName()
-            jsonReader.nextString() //symboal
-            jsonReader.nextName()
-            jsonReader.nextString() // name
-            jsonReader.nextName()
-            jsonReader.nextBoolean() // fiat
-            jsonReader.nextName() // Markets
-            jsonReader.beginObject()//Start Markets object
-            jsonReader.nextName() // Base item
-            jsonReader.beginArray() // Start processing the base object
-            while (jsonReader.hasNext()) { // Loop through all keys
-                jsonReader.beginObject()
-                jsonReader.nextName()
-                var id = jsonReader.nextInt()
-                jsonReader.nextName()
-                val exchange = jsonReader.nextString()
-                jsonReader.nextName()
-                val pair = jsonReader.nextString()
-                jsonReader.nextName()
-                val active = jsonReader.nextBoolean()
-                jsonReader.nextName()
-                val exchangeurl = jsonReader.nextString()
-                data.coins[coinSymbol].let { it?.exchanges?.add(Exchange(exchange,pair,active,exchangeurl)) }
-                jsonReader.endObject()
-//                println("id $id exchange: $exchange pair: $pair Active: $active exchangeURL: $exchangeurl")
+        if(data.coins[coinSymbol]?.exchanges == null) return
+        data.coins[coinSymbol].let {
+            it?.exchanges.let {
+                if(it?.count() ?: 0 > 0)
+                    return
             }
-            jsonReader.close()
-            data.coins.get(coinSymbol).let {println(it?.exchanges?.toString())}
-            } else {
-            // Error handling code goes here
         }
 
-        connection.disconnect()
+        try {
+            var url = URL("https://api.cryptowat.ch/assets/" + coinSymbol)
+            val connection = url.openConnection() as HttpsURLConnection
+            connection.requestMethod = "GET"
+            if (connection.responseCode == 200) {
+                // Success
+                // Further processing here
+                println("Response: " + connection.responseCode)
+                val responseBody = connection.inputStream
+                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
+                //println(responseBodyReader)
+                val jsonReader = JsonReader(responseBodyReader)
+                jsonReader.beginObject()//Start results object
+                jsonReader.nextName() //result
+                jsonReader.beginObject()//Start results object
+                jsonReader.nextName()
+                jsonReader.nextInt() //id item
+                jsonReader.nextName()
+                jsonReader.nextString() //symbol
+                jsonReader.nextName()
+                jsonReader.nextString() // name
+                jsonReader.nextName()
+                jsonReader.nextBoolean() // fiat
+                jsonReader.nextName() // Markets
+                jsonReader.beginObject()//Start Markets object
+                jsonReader.nextName() // Base item
+                jsonReader.beginArray() // Start processing the base object
+                var coin = java.util.HashMap<String, Any>()
+                data.coins[coinSymbol].let {
+                    coin["id"] = it!!.id
+                    coin["s"] = it!!.symbol
+                    coin["n"] = it!!.name
+                    coin["flt"] = it!!.FiatLegalTender
+                }
+                var exchangeData = ArrayList<java.util.HashMap<String, Any>>()
+                while (jsonReader.hasNext()) { // Loop through all keys
+                    jsonReader.beginObject()
+                    jsonReader.nextName()
+                    var id = jsonReader.nextInt()
+                    jsonReader.nextName()
+                    val exchange = jsonReader.nextString()
+                    jsonReader.nextName()
+                    val pair = jsonReader.nextString()
+                    jsonReader.nextName()
+                    val active = jsonReader.nextBoolean()
+                    jsonReader.nextName()
+                    val exchangeurl = jsonReader.nextString()
+                    data.coins[coinSymbol].let {
+                        //ADD exchange to coin
+                        var exchange1 = java.util.HashMap<String, Any>()
+                        exchange1["e"] = exchange
+                        exchange1["p"] = pair
+                        exchange1["a"] = active
+                        exchangeData.add(exchange1)
+                        it?.exchanges?.add(Exchange(exchange, pair, active, exchangeurl))
+                    }
+                    jsonReader.endObject()
+//                println("id $id exchange: $exchange pair: $pair Active: $active exchangeURL: $exchangeurl")
+                }
+                jsonReader.close()
+                coin["es"] = exchangeData
+                data.db.collection("coinpairs")
+                        .add(coin)
+                        .addOnSuccessListener {
+                        }
+                data.coins.get(coinSymbol).let { println(it?.exchanges?.toString()) }
+            } else {
+                // Error handling code goes here
+            }
+
+
+            connection.disconnect()
+        }catch (e:Exception){
+
+        }
     }
     fun initCoins(){
         var url = URL("https://api.cryptowat.ch/assets")
-        val connection = url.openConnection() as HttpsURLConnection
-        connection.requestMethod = "GET"
-        if (connection.responseCode == 200) {
-            // Success
-            // Further processing here
-            println("Response: " + connection.responseCode)
-            val responseBody = connection.inputStream
-            val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-            //println(responseBodyReader)
-            val jsonReader = JsonReader(responseBodyReader)
-            jsonReader.beginObject()//Start results object
-            jsonReader.nextName()
-            jsonReader.beginArray() // Start processing the JSON Array
-            while (jsonReader.hasNext()) { // Loop through all keys
-                jsonReader.beginObject()//Start object
+        try {
+            val connection = url.openConnection() as HttpsURLConnection
+            connection.requestMethod = "GET"
+            if (connection.responseCode == 200) {
+                // Success
+                // Further processing here
+                println("Response: " + connection.responseCode)
+                val responseBody = connection.inputStream
+                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
+                //println(responseBodyReader)
+                val jsonReader = JsonReader(responseBodyReader)
+                jsonReader.beginObject()//Start results object
                 jsonReader.nextName()
-                val id = jsonReader.nextInt()
-                jsonReader.nextName()
-                val symbol = jsonReader.nextString()
-                jsonReader.nextName()
-                val name = jsonReader.nextString()
-                jsonReader.nextName()
-                val fiatLegalTender = jsonReader.nextBoolean()
-                jsonReader.nextName()
-                val coinURL = jsonReader.nextString()
-                data.coins[symbol] = Asset(id,symbol,name,fiatLegalTender,coinURL)
+                jsonReader.beginArray() // Start processing the JSON Array
+                while (jsonReader.hasNext()) { // Loop through all keys
+                    jsonReader.beginObject()//Start object
+                    jsonReader.nextName()
+                    val id = jsonReader.nextInt()
+                    jsonReader.nextName()
+                    val symbol = jsonReader.nextString()
+                    jsonReader.nextName()
+                    val name = jsonReader.nextString()
+                    jsonReader.nextName()
+                    val fiatLegalTender = jsonReader.nextBoolean()
+                    jsonReader.nextName()
+                    val coinURL = jsonReader.nextString()
+                    data.coins[symbol] = Asset(id, symbol, name, fiatLegalTender, coinURL)
 
-                println("id $id symbol $symbol name: $name Fiat: $fiatLegalTender URL: $coinURL")
-                jsonReader.endObject()
+                    println("id $id symbol $symbol name: $name Fiat: $fiatLegalTender URL: $coinURL")
+                    jsonReader.endObject()
+                }
+                jsonReader.close()
+            } else {
+                // Error handling code goes here
             }
-            jsonReader.close()
-        } else {
-            // Error handling code goes here
+            connection.disconnect()
+        }catch (e:Exception){
+
         }
-        connection.disconnect()
+    }
+
+
+    //TODO add function to get all coin pairs
+    fun initCoinsV2(){
+        var url = URL("https://api.cryptowat.ch/assets")
+        try {
+            val connection = url.openConnection() as HttpsURLConnection
+            connection.requestMethod = "GET"
+            if (connection.responseCode == 200) {
+                // Success
+                // Further processing here
+                println("Response: " + connection.responseCode)
+                val responseBody = connection.inputStream
+                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
+                //println(responseBodyReader)
+                val jsonReader = JsonReader(responseBodyReader)
+                jsonReader.beginObject()//Start results object
+                jsonReader.nextName()
+                jsonReader.beginArray() // Start processing the JSON Array
+                while (jsonReader.hasNext()) { // Loop through all keys
+                    jsonReader.beginObject()//Start object
+                    jsonReader.nextName()
+                    val id = jsonReader.nextInt()
+                    jsonReader.nextName()
+                    val symbol = jsonReader.nextString()
+                    jsonReader.nextName()
+                    val name = jsonReader.nextString()
+                    jsonReader.nextName()
+                    val fiatLegalTender = jsonReader.nextBoolean()
+                    jsonReader.nextName()
+                    val coinURL = jsonReader.nextString()
+
+                    data.coins[symbol] = Asset(id, symbol, name, fiatLegalTender, coinURL)
+                    initExchangesForCoin(symbol)
+
+                    println("id $id symbol $symbol name: $name Fiat: $fiatLegalTender URL: $coinURL")
+                    jsonReader.endObject()
+                }
+                jsonReader.close()
+            } else {
+                // Error handling code goes here
+            }
+            connection.disconnect()
+        }catch (e:Exception){
+
+        }
+    }
+
+    fun intCoins3(): Task<QuerySnapshot> {
+        return data.db.collection("coinpairs").get(Source.DEFAULT)
+                .addOnSuccessListener {
+                    it.forEach {
+                        data.coins[it.data["s"].toString()] = Asset(it.data["id"].toString().toInt(),
+                                it.data["s"].toString(),
+                                it.data["n"].toString(),
+                                it.data["flt"].toString().toBoolean(),
+                                "https://api.cryptowat.ch/assets/" + it.data["s"].toString())
+                        for(item in it.data["es"] as ArrayList< Map<String, Object>>){
+                            data.coins[it.data["s"]]?.exchanges?.add(
+                                    Exchange(item["e"].toString(),
+                                            item["p"].toString(),
+                                            item["a"].toString().toBoolean(),
+                                            "https://api.cryptowat.ch/markets/"
+                                                    + item["e"].toString() + "/"
+                                                    + item["p"].toString()
+                                    ))
+                        }
+                    }
+                }
     }
 }
