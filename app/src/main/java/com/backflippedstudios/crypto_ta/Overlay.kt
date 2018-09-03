@@ -11,6 +11,7 @@ data class Overlay(val kind: Kind){
     }
     data class IndicatorInfo(
             var label: String = "",
+            var selectedLegendLabel: String = "",
             var color: Int = 0,
             var colorDefault: Int = 0,
             var filled: Boolean = false,
@@ -20,6 +21,10 @@ data class Overlay(val kind: Kind){
     data class Values(var value: Double = -1.0, var max: Double = 0.0, var min: Double = 0.0)
     var title: String = kind.toString().replace("_"," ")
     var timeFrame: Int = 0
+    var timeFrameSMA: Int = 0
+    var shortTerm: Int = 0
+    var longTerm: Int = 0
+    var PPO_EMA: Int = 0
     var ratio: Int = 0
     var accelerationFactor: Int = 0
     var maximumAcceleration: Int = 0
@@ -30,7 +35,6 @@ data class Overlay(val kind: Kind){
     var thresholdPercent: Int = 0
     var separateChart: Boolean = false
     var valuesAreInts: Boolean = true
-    var chartType: ChartStatusData.Type = ChartStatusData.Type.MAIN_CHART
     // The values represents each of the editable text items that an overlay can edit. A positive
     // value will mean that it can be visible and editable
     var values: Array<Values> = Array(4,{ _ -> Values()})
@@ -41,14 +45,26 @@ data class Overlay(val kind: Kind){
     //This is attempt to have 1 location for all the configuration
     init {
         when(this.kind){
+            Kind.CandleStick -> kindData = KindData(
+                    false,
+                    false,
+                    Kind.CandleStick,
+                    -1,
+                    -1,
+                    false,
+                    true
+            )
             Overlay.Kind.Bollinger_Bands ->{
                 values[0].value = 20.0
                 values[0].min = 2.0
                 values[0].max = 50.0
                 this.timeFrame = 0
-                allIndicatorInfo[0].label = "BB Middle"
-                allIndicatorInfo[1].label = "BB Upper"
-                allIndicatorInfo[2].label = "BB Lower"
+                allIndicatorInfo[0].label = "Bollinger Bands - Middle"
+                allIndicatorInfo[1].label = "Bollinger Bands - Upper"
+                allIndicatorInfo[2].label = "Bollinger Bands - Lower"
+                allIndicatorInfo[0].selectedLegendLabel = "BB - M"
+                allIndicatorInfo[1].selectedLegendLabel = "BB - U"
+                allIndicatorInfo[2].selectedLegendLabel = "BB - L"
                 kindData = KindData(true,false,Kind.Bollinger_Bands, -1,-1, true)
             }
             Kind.D_BB_Timeframe ->{
@@ -57,15 +73,15 @@ data class Overlay(val kind: Kind){
             }
             Overlay.Kind.D_BB_Middle -> {
                 allIndicatorInfo[0].label = "BB Middle Color"
-                kindData = KindData(false,true,Kind.Bollinger_Bands,-1,0)
+                kindData = KindData(false,true,Kind.Bollinger_Bands,-1,0,false,true)
             }
             Overlay.Kind.D_BB_Upper -> {
                 allIndicatorInfo[0].label = "BB Upper Color"
-                kindData = KindData(false,true,Kind.Bollinger_Bands,-1,1)
+                kindData = KindData(false,true,Kind.Bollinger_Bands,-1,1,false,true)
             }
             Overlay.Kind.D_BB_Lower -> {
                 allIndicatorInfo[0].label = "BB Lower Color"
-                kindData = KindData(false,true,Kind.Bollinger_Bands,-1,2)
+                kindData = KindData(false,true,Kind.Bollinger_Bands,-1,2,false,true)
             }
 
             Overlay.Kind.Keltner_Channel ->{
@@ -77,9 +93,12 @@ data class Overlay(val kind: Kind){
                 values[1].max = 10.0
                 this.timeFrame = 0
                 this.ratio = 1
-                allIndicatorInfo[0].label = "KC Middle Color"
-                allIndicatorInfo[1].label = "KC Upper Color"
-                allIndicatorInfo[2].label = "KC Lower Color"
+                allIndicatorInfo[0].label = "Keltner Channel Middle"
+                allIndicatorInfo[1].label = "Keltner Channel Upper"
+                allIndicatorInfo[2].label = "Keltner Channel Lower"
+                allIndicatorInfo[0].selectedLegendLabel = "KC - M"
+                allIndicatorInfo[1].selectedLegendLabel = "KC - U"
+                allIndicatorInfo[2].selectedLegendLabel = "KC - L"
                 kindData = KindData(true,false,Kind.Keltner_Channel, -1,-1, true)
             }
             Overlay.Kind.D_KC_Timeframe -> {
@@ -92,15 +111,15 @@ data class Overlay(val kind: Kind){
             }
             Overlay.Kind.D_KC_Middle -> {
                 allIndicatorInfo[0].label = "KC Middle Color"
-                kindData = KindData(false,true,Kind.Keltner_Channel,-1,0)
+                kindData = KindData(false,true,Kind.Keltner_Channel,-1,0,false, true)
             }
             Overlay.Kind.D_KC_Upper -> {
                 allIndicatorInfo[0].label = "KC Upper Color"
-                kindData = KindData(false,true,Kind.Keltner_Channel,-1,1)
+                kindData = KindData(false,true,Kind.Keltner_Channel,-1,1,false, true)
             }
             Overlay.Kind.D_KC_Lower -> {
                 allIndicatorInfo[0].label = "KC Lower Color"
-                kindData = KindData(false,true,Kind.Keltner_Channel,-1,2)
+                kindData = KindData(false,true,Kind.Keltner_Channel,-1,2,false, true)
             }
             Overlay.Kind.Simple_Moving_Avg ->{
                 values[0].value = 20.0
@@ -108,7 +127,8 @@ data class Overlay(val kind: Kind){
                 values[0].max = 50.0
                 this.timeFrame = 0
                 allIndicatorInfo[0].label = "Simple Moving Average"
-                kindData = KindData(true,false,Kind.Simple_Moving_Avg, -1,-1, true)
+                allIndicatorInfo[0].selectedLegendLabel = "SMA"
+                kindData = KindData(true,false,Kind.Simple_Moving_Avg, -1,0, true, true)
             }
             Overlay.Kind.D_SMA_Timeframe -> {
                 allIndicatorInfo[0].label = "Timeframe"
@@ -124,7 +144,8 @@ data class Overlay(val kind: Kind){
                 values[0].max = 50.0
                 this.timeFrame = 0
                 allIndicatorInfo[0].label = "Exp Moving Average"
-                kindData = KindData(true,false,Kind.Exponential_MA,-1,-1,true)
+                allIndicatorInfo[0].selectedLegendLabel = "EMA"
+                kindData = KindData(true,false,Kind.Exponential_MA,-1,0,true,true)
             }
             Overlay.Kind.D_EMA_Timeframe -> {
                 allIndicatorInfo[0].label = "Timeframe"
@@ -147,7 +168,8 @@ data class Overlay(val kind: Kind){
                 this.accelerationFactor = 0
                 this.maximumAcceleration = 1
                 allIndicatorInfo[0].label = "Parabolic SAR"
-                kindData = KindData(true,false,Kind.Parabolic_SAR, -1,-1, true)
+                allIndicatorInfo[0].selectedLegendLabel = "P SAR"
+                kindData = KindData(true,false,Kind.Parabolic_SAR, -1,0, true, true)
             }
             Overlay.Kind.D_P_SAR_ACC_FAC -> {
                 this.valuesAreInts = false
@@ -173,7 +195,8 @@ data class Overlay(val kind: Kind){
                 this.timeFrame = 0
                 this.ratio = 1
                 allIndicatorInfo[0].label = "Chandelier Exit"
-                kindData = KindData(true,false,Kind.Chandelier_Exit, -1,-1, true)
+                allIndicatorInfo[0].selectedLegendLabel = "CE"
+                kindData = KindData(true,false,Kind.Chandelier_Exit, -1,0, true, true)
             }
             Overlay.Kind.D_CE_Timeframe -> {
                 allIndicatorInfo[0].label = "Timeframe"
@@ -209,41 +232,48 @@ data class Overlay(val kind: Kind){
                 allIndicatorInfo[2].label = "Ich Cloud Conversion"
                 allIndicatorInfo[3].label = "Ich Cloud Base"
                 allIndicatorInfo[4].label = "Ich Cloud Lagging"
+                allIndicatorInfo[0].selectedLegendLabel = "Ich Cloud LeadA"
+                allIndicatorInfo[1].selectedLegendLabel = "Ich Cloud LeadB"
+                allIndicatorInfo[2].selectedLegendLabel = "Ich Cloud Conv"
+                allIndicatorInfo[3].selectedLegendLabel = "Ich Cloud Base"
+                allIndicatorInfo[4].selectedLegendLabel = "Ich Cloud Lagg"
                 kindData = KindData(true,false,Kind.Ichimoku_Cloud, -1,-1, true)
+            }
+            Overlay.Kind.D_Ich_Cloud_Lead_A -> {
+                allIndicatorInfo[0].label = "Leading A"
+                kindData = KindData(false,true,Kind.Ichimoku_Cloud,-1,0, true, true)
+            }
+            Overlay.Kind.D_Ich_Cloud_Lead_B -> {
+                allIndicatorInfo[0].label = "Leading B"
+                kindData = KindData(false,true,Kind.Ichimoku_Cloud,-1,1, true, true)
             }
             Overlay.Kind.D_Ich_Cloud_Conversion -> {
                 allIndicatorInfo[0].label = "Conversion"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,0,2)
+                kindData = KindData(false,true,Kind.Ichimoku_Cloud,0,2, true, true)
             }
             Overlay.Kind.D_Ich_Cloud_Base -> {
                 allIndicatorInfo[0].label = "Base"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,1,3)
+                kindData = KindData(false,true,Kind.Ichimoku_Cloud,1,3, true, true)
             }
-
+            Overlay.Kind.D_Ich_Cloud_Lagging -> {
+                allIndicatorInfo[0].label = "Lagging"
+                kindData = KindData(false,true,Kind.Ichimoku_Cloud,3,4, true, true)
+            }
             Overlay.Kind.D_Ich_Cloud_Lead -> {
                 allIndicatorInfo[0].label = "Leading"
                 kindData = KindData(false,true,Kind.Ichimoku_Cloud,2,-1)
             }
 
-            Overlay.Kind.D_Ich_Cloud_Lagging -> {
-                allIndicatorInfo[0].label = "Lagging"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,3,4)
-            }
-            Overlay.Kind.D_Ich_Cloud_Lead_A -> {
-                allIndicatorInfo[0].label = "Leading A"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,-1,0)
-            }
-            Overlay.Kind.D_Ich_Cloud_Lead_B -> {
-                allIndicatorInfo[0].label = "Leading B"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,-1,1)
-            }
+
+
             Overlay.Kind.ZigZag ->{
                 values[0].value = 7.0
                 values[0].min = 0.5
                 values[0].max = 20.0
                 this.thresholdPercent = 0
                 allIndicatorInfo[0].label = "Zig Zag"
-                kindData = KindData(true,false,Kind.ZigZag,-1,-1, true)
+                allIndicatorInfo[0].selectedLegendLabel= "Zig Zag"
+                kindData = KindData(true,false,Kind.ZigZag,-1,0, true, true)
             }
             Overlay.Kind.D_ZigZag_Timeframe ->{
                 allIndicatorInfo[0].label = "Timeframe"
@@ -259,9 +289,9 @@ data class Overlay(val kind: Kind){
                 values[0].max = 50.0
                 this.timeFrame = 0
                 this.separateChart = true
-                this.chartType = ChartStatusData.Type.AROON_OSCI_CHART
                 allIndicatorInfo[0].label = "Aroon Oscillator"
-                kindData = KindData(true,false,Kind.AroonOsci, -1,-1, false)
+                allIndicatorInfo[0].selectedLegendLabel= "Aroon Oscillator"
+                kindData = KindData(true,false,Kind.AroonOsci, -1,0, false, true)
             }
             Overlay.Kind.AroonUpDown -> {
                 values[0].value = 25.0
@@ -269,9 +299,10 @@ data class Overlay(val kind: Kind){
                 values[0].max = 50.0
                 this.timeFrame = 0
                 this.separateChart = true
-                this.chartType = ChartStatusData.Type.AROON_UP_DOWN_CHART
                 allIndicatorInfo[0].label = "Aroon Up"
                 allIndicatorInfo[1].label = "Aroon Down"
+                allIndicatorInfo[0].selectedLegendLabel= "Aroon Up"
+                allIndicatorInfo[1].selectedLegendLabel= "Aroon Down"
                 kindData = KindData(true,false,Kind.AroonUpDown, -1,-1, true)
             }
             Kind.D_ArronUpDown_Timeframe ->{
@@ -283,11 +314,11 @@ data class Overlay(val kind: Kind){
             }
             Overlay.Kind.D_AroonUp -> {
                 allIndicatorInfo[0].label = "Aroon Up"
-                kindData = KindData(false,true,Kind.AroonUpDown,-1,0)
+                kindData = KindData(false,true,Kind.AroonUpDown,-1,0, false,true)
             }
             Overlay.Kind.D_AroonDown -> {
                 allIndicatorInfo[0].label = "Aroon Down"
-                kindData = KindData(false,true,Kind.AroonUpDown,-1,1)
+                kindData = KindData(false,true,Kind.AroonUpDown,-1,1, false,true)
             }
 
         //Detrend Price Ocelator
@@ -307,24 +338,138 @@ data class Overlay(val kind: Kind){
             }
             Overlay.Kind.Volume_Bars -> {
                 this.separateChart = true
-                this.chartType = ChartStatusData.Type.VOLUME_CHART
-                kindData = KindData(true,false,Kind.Volume_Bars)
+                allIndicatorInfo[0].label = "Volume"
+                allIndicatorInfo[0].selectedLegendLabel= "Volume"
+                kindData = KindData(true,false,Kind.Volume_Bars,-1,0,false,true)
             }
             Overlay.Kind.Notifications ->{
                 kindData = KindData(true,false,Kind.Notifications,-1,-1, false)
                 this.selected = true
 
             }
+            Overlay.Kind.RSI ->{
+                values[0].value = 14.0
+                values[0].min = 2.0
+                values[0].max = 50.0
+                this.timeFrame = 0
+                this.separateChart = true
+                allIndicatorInfo[0].label = "RSI"
+                allIndicatorInfo[0].selectedLegendLabel= "RSI"
+                kindData = KindData(true,false,Kind.RSI,-1,0, true,true)
+            }
+            Overlay.Kind.D_RSI_Timeframe ->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.RSI,0,0, false)
+            }
+            Overlay.Kind.DPO ->{
+                values[0].value = 20.0
+                values[0].min = 2.0
+                values[0].max = 50.0
+                this.timeFrame = 0
+                this.separateChart = true
+                allIndicatorInfo[0].label = "Detrend Price Osci"
+                allIndicatorInfo[0].selectedLegendLabel= "DPO"
+                kindData = KindData(true,false,Kind.DPO,-1,0, true, true)
+            }
+            Overlay.Kind.D_DPO_Timeframe ->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.DPO,0,0, false)
+            }
+
+            Overlay.Kind.Stoch_Oscill -> {
+                values[0].value = 14.0
+                values[0].min = 2.0
+                values[0].max = 50.0
+                values[1].value = 3.0
+                values[1].min = 1.0
+                values[1].max = 20.0
+                this.timeFrame = 0
+                this.timeFrameSMA = 1
+                this.separateChart = true
+                allIndicatorInfo[0].label = "Stochastic Osci"
+                allIndicatorInfo[0].selectedLegendLabel = "Stoch Osci K"
+                allIndicatorInfo[1].selectedLegendLabel = "Stoch Osci D"
+                kindData = KindData(true, false, Kind.Stoch_Oscill, -1, -1, true)
+            }
+
+            Overlay.Kind.D_Stoch_Oscill_K_Timeframe ->{
+                allIndicatorInfo[0].label = "Stoc Osci Timeframe K"
+                kindData = KindData(false,true,Kind.Stoch_Oscill,0,0, false,true)
+            }
+
+            Overlay.Kind.D_Stoch_Oscill_SMA_Timeframe ->{
+                allIndicatorInfo[0].label = "Stoc Osci Timeframe SMA"
+                kindData = KindData(false,true,Kind.Stoch_Oscill,1,1, false, true)
+            }
+
+            Overlay.Kind.PPO -> {
+                values[0].value = 12.0
+                values[0].min = 2.0
+                values[0].max = 52.0
+                values[1].value = 26.0
+                values[1].min = 2.0
+                values[1].max = 52.0
+                values[2].value = 9.0
+                values[2].min = 2.0
+                values[2].max = 24.0
+                this.shortTerm = 0
+                this.longTerm = 1
+                this.PPO_EMA = 2
+                this.separateChart = true
+                allIndicatorInfo[0].label = "Percentage Price Oscillator"
+                allIndicatorInfo[0].selectedLegendLabel = "PPO Short Term"
+                allIndicatorInfo[1].selectedLegendLabel = "PPO Long Term"
+                allIndicatorInfo[1].selectedLegendLabel = "EMA"
+                kindData = KindData(true, false, Kind.PPO, -1, -1, true)
+            }
+            Overlay.Kind.D_PPO_ShortTerm ->{
+                allIndicatorInfo[0].label = "PPO Short Term"
+                kindData = KindData(false,true,Kind.PPO,0,0, false,true)
+            }
+            Overlay.Kind.D_PPO_LongTerm ->{
+                allIndicatorInfo[0].label = "PPO Long Term"
+                kindData = KindData(false,true,Kind.PPO,1,-1, false,false)
+            }
+            Overlay.Kind.D_PPO_EMA ->{
+                allIndicatorInfo[0].label = "EMA"
+                kindData = KindData(false,true,Kind.PPO,2,1, false,true)
+            }
+
+            Kind.None ->{
+                kindData = KindData(false,false,Kind.None)
+            }
         }
     }
     fun updateColors(context: Context) {
-        var sharedPref = context.getSharedPreferences("com.skydoves.colorpickerpreference", Context.MODE_PRIVATE);
+        var sharedPref = context.getSharedPreferences("com.skydoves.colorpickerpreference", Context.MODE_PRIVATE)
 
 
         when(this.kind){
             Overlay.Kind.AroonOsci -> {
                 allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.AroonOsci.toString() + "_COLOR",0)
                 allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_cyan_500)
+                allIndicatorInfo[0].filled = true
+                allIndicatorInfo[0].filledColor = ContextCompat.getColor(context,R.color.md_cyan_500)
+            }
+            Overlay.Kind.RSI ->{
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_RSI_Timeframe.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_purple_600)
+            }
+            Overlay.Kind.Stoch_Oscill ->{
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_Stoch_Oscill_K_Timeframe.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_600)
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_Stoch_Oscill_SMA_Timeframe.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_red_400)
+            }
+            Overlay.Kind.PPO ->{
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_PPO_ShortTerm.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_400)
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_PPO_EMA.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_yellow_700)
+            }
+            Overlay.Kind.DPO ->{
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_DPO_Timeframe.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_700)
                 allIndicatorInfo[0].filled = true
                 allIndicatorInfo[0].filledColor = ContextCompat.getColor(context,R.color.md_cyan_500)
             }
@@ -404,6 +549,7 @@ data class Overlay(val kind: Kind){
                 allIndicatorInfo[6].color = ContextCompat.getColor(context,R.color.md_red_400)
                 allIndicatorInfo[7].color = ContextCompat.getColor(context,R.color.md_red_600)
             }
+
         }
 
         //When shared prefs are not avaliable(color == 0) then use the default color.
@@ -419,10 +565,14 @@ data class Overlay(val kind: Kind){
             val parentKind:Kind,
             val valueIndex: Int = -1,
             val colorIndex: Int = -1,
-            val hasChildren: Boolean = false
+            val hasChildren: Boolean = false,
+            val hasData: Boolean = false
+
     )
     enum class Kind{
         Volume_Bars,
+
+        CandleStick,
 
         AroonUpDown,
         D_ArronUpDown_Timeframe,
@@ -430,6 +580,21 @@ data class Overlay(val kind: Kind){
         D_AroonDown,
 
         AroonOsci,
+
+        RSI,
+        D_RSI_Timeframe,
+
+        DPO,
+        D_DPO_Timeframe,
+
+        Stoch_Oscill,
+        D_Stoch_Oscill_K_Timeframe,
+        D_Stoch_Oscill_SMA_Timeframe,
+
+        PPO,
+        D_PPO_ShortTerm,
+        D_PPO_LongTerm,
+        D_PPO_EMA,
 
         Bollinger_Bands,
         D_BB_Timeframe,
@@ -473,9 +638,12 @@ data class Overlay(val kind: Kind){
         ZigZag,
         D_ZigZag_Timeframe,
         D_ZigZag_COLOR,
+
         Exponential_MA_Ribbon,
 
-        Notifications
+        Notifications,
+
+        None
     }
 
 }

@@ -93,8 +93,8 @@ public class InSlopeRule extends AbstractRule {
    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 	DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
 	Decimal val = diff.getValue(index);
-	boolean minSlopeSatisfied = minSlope.isNaN() ? true : val.isGreaterThanOrEqual(minSlope);
-	boolean maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isLessThanOrEqual(maxSlope);
+	boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
+	boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
 	boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
 	final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;

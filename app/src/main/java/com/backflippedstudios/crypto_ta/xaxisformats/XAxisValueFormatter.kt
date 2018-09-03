@@ -16,10 +16,10 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
     //Value is the x position of what was inserted
     override fun getFormattedValue(value: Float, axis: AxisBase?): String {
         try {
-            if(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts != null
+            if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts != null
                     && MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.isEmpty == false
-                    && value.toInt() < MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount!!
-                    && MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount!! > 0) {
+                    && value.toInt() < MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.tickCount!!
+                    && MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.tickCount!! > 0) {
     //            println("Value: $value Tick Count: ${MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount}")
 
 
@@ -63,7 +63,7 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
             }
             else{
                 println("TS was null or tickCount was bad")
-                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts == null){
+                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts == null){
                     println("TS was null!!")
                 }
                 return ""
@@ -73,9 +73,7 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
         }
     }
 
-    constructor(parcel: Parcel) : this() {
-
-    }
+    constructor(parcel: Parcel) : this()
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
 
@@ -111,7 +109,7 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
             var convertedHour: Int? = hour?.plus(1) //This is because time starts at 00:00
 
             if(convertedHour!! >12){
-                return convertedHour?.minus(12)!!
+                return convertedHour.minus(12)
             }else{
                 return convertedHour
             }

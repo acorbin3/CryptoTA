@@ -56,9 +56,9 @@ class DataSource {
 
             var granularity = interval.seconds
             println("About to connect to gdax api")
-            var startCal = Calendar.getInstance();
+            var startCal = Calendar.getInstance()
             startCal.set(2016, 10, 10)
-            var endCal = Calendar.getInstance();
+            var endCal = Calendar.getInstance()
             endCal.set(2016, 9, 10)
 
             //println("Start: " + start.fromCalendar(startCal))
@@ -157,12 +157,12 @@ class DataSource {
             println("Finished parsing and found: " + ticks.size)
         }
         catch (e : MalformedURLException) {
-            e.printStackTrace();
+            e.printStackTrace()
         } catch (e: IOException) {
-            e.printStackTrace();
+            e.printStackTrace()
         }
         catch (e: NumberFormatException){
-            e.printStackTrace();
+            e.printStackTrace()
             ticks.clear()
             return ticks
         }
@@ -276,9 +276,9 @@ class DataSource {
                 var coin = java.util.HashMap<String, Any>()
                 data.coins[coinSymbol].let {
                     coin["id"] = it!!.id
-                    coin["s"] = it!!.symbol
-                    coin["n"] = it!!.name
-                    coin["flt"] = it!!.FiatLegalTender
+                    coin["s"] = it.symbol
+                    coin["n"] = it.name
+                    coin["flt"] = it.FiatLegalTender
                 }
                 var exchangeData = ArrayList<java.util.HashMap<String, Any>>()
                 while (jsonReader.hasNext()) { // Loop through all keys

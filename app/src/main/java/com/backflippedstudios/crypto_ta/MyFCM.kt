@@ -18,12 +18,12 @@ class MyFCM: FirebaseMessagingService() {
         //Check to see if notifications are on, if so go head and create notification
         if (p0?.notification != null) {
             Log.e(TAG, "Title: " + p0.notification?.title)
-            Log.e(TAG, "Body: " + p0?.notification?.body)
-            sendNotification(p0?.notification?.body,p0?.data["link"], p0?.data["openPlayStore"]?.toBoolean() )
+            Log.e(TAG, "Body: " + p0.notification?.body)
+            sendNotification(p0.notification?.body, p0.data["link"], p0.data["openPlayStore"]?.toBoolean() )
         }
 
         if (p0?.data!!.isNotEmpty()) {
-            Log.e(TAG, "Data: " + p0?.data)
+            Log.e(TAG, "Data: " + p0.data)
         }
     }
     private fun sendNotification(body: String?, url: String?, openPlayStore: Boolean?) {

@@ -21,7 +21,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.skydoves.colorpickerpreference.ColorPickerDialog
 
 
-class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overlay>):
+class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overlay>, val allList: HashMap<Overlay.Kind,Overlay>):
         RecyclerView.Adapter<RecyclerView.ViewHolder>(){
     private var isFromView: Boolean = false
     private var isFromViewET1: Boolean = false
@@ -35,9 +35,159 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
 
     object data{
         var list: ArrayList<Overlay> = ArrayList()
+        var all: HashMap<Overlay.Kind,Overlay> = HashMap()
+
+    }
+    companion object overlayInfo{
+        fun getTimeframe(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.timeFrame].value
+                }
+            }
+            return 0.0
+        }
+        fun getLongTerm(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.longTerm].value
+                }
+            }
+            return 0.0
+        }
+        fun getShortTerm(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.shortTerm].value
+                }
+            }
+            return 0.0
+        }
+        fun getPPOEMA(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.PPO_EMA].value
+                }
+            }
+            return 0.0
+        }
+        fun getTimeframeSMA(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.timeFrameSMA].value
+                }
+            }
+            return 0.0
+        }
+        fun getRatio(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.ratio].value
+                }
+            }
+            return 0.0
+        }
+        fun getAccFactor(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.accelerationFactor].value
+                }
+            }
+            return 0.0
+        }
+        fun getMaxAcc(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.maximumAcceleration].value
+                }
+            }
+            return 0.0
+        }
+        fun getThresholdPercent(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.thresholdPercent].value
+                }
+            }
+            return 0.0
+        }
+        fun getConversionPeriod(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.conversionPeriod].value
+                }
+            }
+            return 0.0
+        }
+        fun getLaggingPeriod(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.laggingPeriod].value
+                }
+            }
+            return 0.0
+        }
+        fun getLeadingPeriod(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.leadingPeriod].value
+                }
+            }
+            return 0.0
+        }
+        fun getBase(kind: Overlay.Kind): Double{
+            for(overlay in data.list){
+                if(overlay.kind == kind){
+                    return overlay.values[overlay.basePeriod].value
+                }
+            }
+            return 0.0
+        }
+        fun getColor(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): Int?{
+            return if(kind == parentKind){
+                data.all[kind]?.allIndicatorInfo?.get(0)?.color
+
+            }else{
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.color
+            }
+        }
+        fun getLabel(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): String?{
+            return if(kind == parentKind){
+                data.all[kind]?.allIndicatorInfo?.get(0)?.label
+
+            }else{
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.label
+            }
+        }
+        fun getfilled(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): Boolean?{
+            return if(kind == parentKind){
+                data.all[kind]?.allIndicatorInfo?.get(0)?.filled
+
+            }else{
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.filled
+            }
+        }
+        fun getfilledColor(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): Int?{
+            return if(kind == parentKind){
+                data.all[kind]?.allIndicatorInfo?.get(0)?.filledColor
+
+            }else{
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.filledColor
+            }
+        }
+        fun getSelectedLegendText(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): String?{
+            return if(kind == parentKind){
+                data.all[kind]?.allIndicatorInfo?.get(0)?.selectedLegendLabel
+
+            }else{
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.selectedLegendLabel
+            }
+        }
+
     }
     init {
         data.list = overlayList
+        data.all = allList
         //Load indicators from restart
         for(item in data.list){
             //Adding Notifications as initially on
@@ -222,8 +372,10 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
 
                 vh.switch.setOnCheckedChangeListener { switchView, isChecked ->
                     val getPosition = getPositionFromKind(switchView.tag as Overlay.Kind)
+                    val kind = switchView.tag as Overlay.Kind
                     if (!isFromView) {
                         data.list[getPosition].selected = isChecked
+                        data.all[kind]?.selected = isChecked
                         val editor = MainActivity.data.prefs!!.edit()
                         editor.putBoolean(data.list[getPosition].kind.name, isChecked)
                         editor.apply()
@@ -248,23 +400,32 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                         }else{
                             if (data.list[getPosition].separateChart) {
                                 if (!isChecked) {
-                                    removeChartItem(data.list[getPosition].chartType)
+                                    removeChartItem(data.list[getPosition].kind)
                                 } else {
-                                    MainActivity.data.chartList.add(MainActivity.data.chartList.size, ChartStatusData(ChartStatusData.Status.UPDATE_CHART, data.list[getPosition].chartType))
+                                    MainActivity.data.chartList.add(MainActivity.data.chartList.size,
+                                            ChartStatusData(ChartStatusData.Status.UPDATE_CHART,
+                                                    ChartStatusData.Type.SEPARATE_CHART,data.list[getPosition].kind))
                                 }
                             }
 
                             //Update the chart with updated overlay selection
                             if (data.list[getPosition].kind == Overlay.Kind.Ichimoku_Cloud) {
-                                MainActivity.data.all_ta[MainActivity.data.saved_time_period].updateIndividualChartData()
+                                MainActivity.data.all_ta[MainActivity.data.saved_time_period].updateSeparateCharts()
 
-                                if (data.list[getPosition].selected) {
-                                    updateChartStatus(ChartStatusData.Status.UPDATE_CHART, data.list[getPosition].chartType)
+//                                if (data.list[getPosition].selected) {
+//                                    updateChartStatus(ChartStatusData.Status.UPDATE_CHART, data.list[getPosition].kind)
+//                                }
+
+                            }
+                            //Ensuring all seperate charts get reloaded
+                            for(item in data.list){
+                                if(item.selected && item.separateChart){
+                                    updateChartStatus(ChartStatusData.Status.UPDATE_CHART, item.kind)
                                 }
                             }
-
-                            updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
-                            MainActivity.data.rvCharts.adapter.notifyDataSetChanged()
+                            if(!data.list[getPosition].separateChart)
+                                updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART, data.list[getPosition].kind)
+                            MainActivity.data.rvCharts.adapter?.notifyDataSetChanged()
                             //Reset legends
                             for ((key, chart) in ChartListAdapter.data.charts) {
                                 chart as CombinedChart
@@ -342,7 +503,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                         var scalingFactor: Int = getScalingFactor(pos)
                         triggerTextEditUpdate(
                                 KeyEvent.KEYCODE_ENTER,
-                                p0?.tag as Overlay.Kind,
+                                p0.tag as Overlay.Kind,
                                 p0.progress.toDouble()/scalingFactor ,
                                 -1,
                                 false,
@@ -371,7 +532,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                         }
                         else{
                             println("Resetting progress to ${(getValue(pos) * scalingFactor).toInt()}")
-                            p0?.progress = (getValue(pos) * scalingFactor).toInt()
+                            p0.progress = (getValue(pos) * scalingFactor).toInt()
                         }
 
                     }
@@ -405,11 +566,17 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
 
                                 builder.setPositiveButton("Ok") { colorEnvelope ->
                                     setColor(pos, colorEnvelope.color)
-                                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
+
+                                    if(!data.all[data.list[pos].kindData.parentKind]?.separateChart!!) {
+                                        updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
+                                    }
+                                    else{
+                                        updateChartStatus(ChartStatusData.Status.UPDATE_CHART, data.list[pos].kindData.parentKind)
+                                    }
                                     val activity = lContext as Activity
                                     activity.runOnUiThread {
-                                        MainActivity.data.rvCharts.adapter.notifyDataSetChanged()
-                                        MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemChanged(pos)
+                                        MainActivity.data.rvCharts.adapter?.notifyDataSetChanged()
+                                        MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(pos)
                                     }
                                     builder.colorPickerView.saveData()
                                 }
@@ -424,8 +591,8 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                     updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
                                     val activity = lContext as Activity
                                     activity.runOnUiThread {
-                                        MainActivity.data.rvCharts.adapter.notifyDataSetChanged()
-                                        MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemChanged(pos)
+                                        MainActivity.data.rvCharts.adapter?.notifyDataSetChanged()
+                                        MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(pos)
                                     }
                                 })
                                 val alertDialog: AlertDialog = builder.create()
@@ -458,7 +625,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                 data.list.removeAt(i)
             }
     //                        println("start: ${positionsToRemove[0]} size: ${positionsToRemove.size}")
-            MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemRangeRemoved(
+            MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemRangeRemoved(
                     positionsToRemove[0], positionsToRemove.size)
 
             vh.ivDetailedDropdown.animate()
@@ -479,7 +646,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                 // Need to update items from start insert postion till the end of the list to
                 for (item in itemsToAdd) {
                     data.list.add(insertPosition, item)
-                    MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemInserted(insertPosition)
+                    MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemInserted(insertPosition)
                     insertPosition += 1
 
                 }
@@ -492,10 +659,15 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
     }
 
     private fun setColor(pos: Int, color: Int){
+        var sharedPref = lContext.getSharedPreferences("com.skydoves.colorpickerpreference", Context.MODE_PRIVATE)
+        var edit = sharedPref.edit()
         for (i in data.list.indices) {
             if (data.list[i].kind == data.list[pos].kindData.parentKind
                     && data.list[pos].kindData.colorIndex >= 0) {
                 data.list[i].allIndicatorInfo[data.list[pos].kindData.colorIndex].color = color
+                data.all[data.list[i].kind]?.allIndicatorInfo?.get(data.list[pos]?.kindData.colorIndex)?.color = color
+                edit.putInt(data.list[pos].kind.toString() +"_COLOR",color)
+                edit.apply()
                 break
             }
         }
@@ -613,7 +785,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                     for(i in data.list.indices){
                         if((data.list[i].kindData.parentKind == data.list[position].kind)
                         and (data.list[i].kindData.valueIndex == valuesIndex)){
-                            MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemChanged(i)
+                            MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(i)
                             break
 
                         }
@@ -624,7 +796,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                     for(i in data.list.indices){
                         if(data.list[i].kind == data.list[position].kindData.parentKind){
                             updateIndex = i
-                            MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemChanged(updateIndex)
+                            MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(updateIndex)
                             break
                         }
                     }
@@ -632,7 +804,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                     //Enhancement to combine the forloop above
                     for(i in data.list.indices){
                         if(data.list[i].kind == kind){
-                            MainActivity.data.rvIndicatorsOverlays.adapter.notifyItemChanged(i)
+                            MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(i)
                             break
                         }
                     }
@@ -657,7 +829,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                         //Update chart
                         updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
                         var activity = lContext as Activity
-                        activity.runOnUiThread { MainActivity.data.rvCharts.adapter.notifyDataSetChanged() }
+                        activity.runOnUiThread { MainActivity.data.rvCharts.adapter?.notifyDataSetChanged() }
                     }
                 }
             }
@@ -665,6 +837,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
         }
         return false
     }
+
 
     private fun getTextValue(position: Int, valuePosition: Int = -1): String {
         return if (isInts(position)) {
@@ -675,7 +848,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
         }
     }
 
-    fun removeChartItem(type: ChartStatusData.Type ){
+    private fun removeChartItem(type: ChartStatusData.Type ){
         var chartToRemoveIndex: Int = 0
         for(chart in MainActivity.data.chartList){
             if (chart.type == type){
@@ -686,7 +859,35 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
         MainActivity.data.chartList.removeAt(chartToRemoveIndex)
 
     }
-    fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type ){
+    private fun removeChartItem(kind: Overlay.Kind ){
+        var chartToRemoveIndex: Int = 0
+        for(chart in MainActivity.data.chartList){
+            if (chart.kind == kind){
+                break
+            }
+            chartToRemoveIndex += 1
+        }
+        MainActivity.data.chartList.removeAt(chartToRemoveIndex)
+
+    }
+    private fun updateChartStatus(status: ChartStatusData.Status, kind: Overlay.Kind ){
+        for(chart in MainActivity.data.chartList){
+            if (chart.kind == kind){
+                chart.status = status
+            }
+        }
+
+    }
+    private fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type, kind: Overlay.Kind ){
+        for(chart in MainActivity.data.chartList){
+            if (chart.type == type){
+                chart.status = status
+                chart.kind = kind
+            }
+        }
+
+    }
+    private fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type ){
         for(chart in MainActivity.data.chartList){
             if (chart.type == type){
                 chart.status = status
@@ -699,11 +900,11 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
         lateinit var recyclerViewHolder: RecyclerView.ViewHolder
 //        println("Creating View Holder")
         if(viewType == COMPACT_ITEM) {
-            val view = LayoutInflater.from(parent?.context).inflate(R.layout.spinner_overlays, parent, false) as View
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.spinner_overlays, parent, false) as View
             recyclerViewHolder = ViewHolder(view)
             return recyclerViewHolder
         }else{
-            val view = LayoutInflater.from(parent?.context).inflate(R.layout.detailed_overlay_item, parent, false) as View
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.detailed_overlay_item, parent, false) as View
             recyclerViewHolder = DetailedViewHolder(view)
             return recyclerViewHolder
         }
