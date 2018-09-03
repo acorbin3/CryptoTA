@@ -30,7 +30,7 @@ class ChartStyle(context: Context) {
     fun updateCandlestickGraph(ta: TechnicalAnalysis,mChart: CombinedChart?){
         val combinedData = CombinedData()
         //Do candlestick data
-        val candleDataSet = CandleDataSet(ta.candlestickData, "Candlestick Data Set")
+        val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick), "Candlestick Data Set")
         updateCandleDataFormat(candleDataSet)
         candleDataSet.axisDependency = YAxis.AxisDependency.RIGHT
 
@@ -85,61 +85,13 @@ class ChartStyle(context: Context) {
         it.axisRight.yOffset =7F
     }
 
-    private fun lineChartDefaults(it: LineChart){
-        it.legend.setDrawInside(true)
-        it.legend.verticalAlignment = Legend.LegendVerticalAlignment.TOP
-        it.legend.horizontalAlignment = Legend.LegendHorizontalAlignment.LEFT
-        it.legend.orientation = Legend.LegendOrientation.VERTICAL
-        it.legend.xOffset = 20F
-        it.legend.form = Legend.LegendForm.CIRCLE
-        it.legend.textSize = 9F
-        it.legend.textColor = Color.WHITE
-        it.setDrawBorders(true)
-        it.setBorderColor(ContextCompat.getColor(context, R.color.md_grey_600))
-        it.viewPortHandler?.zoom(5F,5F)
-        it.axisRight.textColor = Color.WHITE
-        it.legend.isEnabled = true
-
-        it.isAutoScaleMinMaxEnabled = true
-
-        it.xAxis.setDrawLabels(false)
-
-        it.axisLeft.isEnabled = false
-        it.isHighlightPerTapEnabled = true
-        it.description.isEnabled = false
-        it.axisRight.yOffset =7F
-        it.axisRight.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
-        it.axisRight.labelCount = 3
-//        it.axisRight.isEnabled = false
-    }
-
-    private fun barchartDefaults(it: BarChart){
-        it.setDrawBorders(true)
-        it.setBorderColor(ContextCompat.getColor(context, R.color.md_grey_600))
-        it.viewPortHandler?.zoom(5F,5F)
-        it.axisRight.textColor = Color.WHITE
-        it.legend.isEnabled = false
-
-        it.isAutoScaleMinMaxEnabled = true
-
-        it.xAxis.setDrawLabels(false)
-
-        it.axisLeft.isEnabled = false
-        it.isHighlightPerTapEnabled = true
-        it.description.isEnabled = false
-        it.axisRight.yOffset =7F
-        it.axisRight.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
-        it.axisRight.labelCount = 3
-//        it.axisRight.isEnabled = false
-    }
-
     fun updateOverlays(overlays: ArrayList<Overlay>, ta: TechnicalAnalysis, mChart: CombinedChart?){
         val combinedData = CombinedData()
         val allScatter_Data = ArrayList<IScatterDataSet>()
 
         //Do candlestick data
-        if(ta.candlestickData.size > 0) {
-            val candleDataSet = CandleDataSet(ta.candlestickData, "Candlestick Data Set")
+        if(ta.getCandlestickData(Overlay.Kind.CandleStick).size > 0) {
+            val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick), "Candlestick Data Set")
             updateCandleDataFormat(candleDataSet)
 
             candleDataSet.axisDependency = YAxis.AxisDependency.RIGHT
@@ -154,6 +106,9 @@ class ChartStyle(context: Context) {
         for (overlay in overlays){
             if (overlay.selected && !overlay.separateChart) {
                 var list = ta.getData(overlay.kind)
+                if(list.isEmpty()){
+                    continue
+                }
                 if(overlay.kind != Overlay.Kind.Ichimoku_Cloud) {
                     for (i in list.indices) {
                         when (overlay.allIndicatorInfo[i].type) {
@@ -227,6 +182,8 @@ class ChartStyle(context: Context) {
             mChart?.let {
                 it.data = combinedData
                 chartDefaults(it)
+                it.fitScreen()
+                it.zoom(5F,0F,it.data.xMax,0F)
                 it.invalidate()
             }
         }
@@ -258,9 +215,9 @@ class ChartStyle(context: Context) {
             mChart?.let{
                 it.data = combinedData
                 chartDefaults(it,false)
+                it.fitScreen()
+                it.zoom(5F,0F,it.data.xMax,0F)
                 if(moveViewToEnd){
-                    it.fitScreen()
-                    it.zoom(5F,0F,it.data.xMax,0F)
                     it.moveViewToX(it.data.xMax)
                 }
                 it.invalidate()
@@ -269,14 +226,14 @@ class ChartStyle(context: Context) {
     }
     fun updateVolumeGraph(ta: TechnicalAnalysis,mChart: CombinedChart?, moveViewToEnd: Boolean = false){
         val allBar_Data = ArrayList<IBarDataSet>()
-        val barDataSet = VolumeBarDataSet(ta.volumeBarData,"Volume")
+        val barDataSet = VolumeBarDataSet(ta.data[Overlay.Kind.Volume_Bars]?.data as ArrayList<BarEntry>,"Volume")
         val combinedData = CombinedData()
         barDataSet.setColors(
                 ContextCompat.getColor(context, R.color.md_red_500),
                 ContextCompat.getColor(context, R.color.md_green_500),
                 ContextCompat.getColor(context, R.color.md_blue_400)
         )
-        println("Vol Bar data size: ${ta.volumeBarData.size}")
+        println("Vol Bar data size: ${ta.data[Overlay.Kind.Volume_Bars]?.data?.size}")
         barDataSet.axisDependency = YAxis.AxisDependency.RIGHT
         barDataSet.setDrawValues(false)
         println("Sizie of bar dataset: ${barDataSet.stackSize}")
@@ -286,10 +243,9 @@ class ChartStyle(context: Context) {
             mChart?.let {
                 it.data = combinedData
                 chartDefaults(it, false)
+                it.fitScreen()
+                it.zoom(5F, 0F, it.data.xMax, 0F)
                 if (moveViewToEnd) {
-
-                    it.fitScreen()
-                    it.zoom(5F, 0F, it.data.xMax, 0F)
                     it.moveViewToX(it.data.xMax) // This moves graph to the all the way to the right
                 }
                 it.invalidate()

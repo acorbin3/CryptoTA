@@ -10,7 +10,7 @@ import android.graphics.Matrix.MSCALE_X
 import android.view.View
 
 
-class MirrorChartGestureListener(val sourceKey:ChartStatusData.Type, var srcChart: Chart<*>, var destCharts:ArrayList<Chart<*>>): OnChartGestureListener{
+class MirrorChartGestureListener(val sourceKey:Overlay.Kind, var srcChart: Chart<*>, var destCharts:ArrayList<Chart<*>>): OnChartGestureListener{
     override fun onChartGestureStart(me: MotionEvent?, lastPerformedGesture: ChartTouchListener.ChartGesture?) {
 //        println("GestureStart $sourceKey")
         MainActivity.data.lastMainTouchChart = sourceKey

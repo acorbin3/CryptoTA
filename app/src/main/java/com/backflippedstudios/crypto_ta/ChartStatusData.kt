@@ -1,6 +1,6 @@
 package com.backflippedstudios.crypto_ta
 
-class ChartStatusData(var status: Status, var type: Type){
+class ChartStatusData(var status: Status, var type: Type, var kind: Overlay.Kind){
     enum class Status{
         LOADING,
         INITIAL_LOAD,
@@ -8,14 +8,13 @@ class ChartStatusData(var status: Status, var type: Type){
         UPDATE_FAILED,
         UPDATE_CANDLESTICKS,
         UPDATE_OVERLAYS,
-        INTERNET_OUT
+        INTERNET_OUT,
+        LOADING_COMPLETE
     }
 
     enum class Type{
         MAIN_CHART,
-        VOLUME_CHART,
-        AROON_OSCI_CHART,
-        AROON_UP_DOWN_CHART,
+        SEPARATE_CHART,
     }
 
 }

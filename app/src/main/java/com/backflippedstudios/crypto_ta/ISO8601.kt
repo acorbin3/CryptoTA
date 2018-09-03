@@ -1,11 +1,10 @@
 package com.backflippedstudios.crypto_ta
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.GregorianCalendar
 
 
 /**
@@ -14,7 +13,7 @@ import java.util.GregorianCalendar;
 class ISO8601 {
     /** Transform Calendar to ISO 8601 string.  */
     fun fromCalendar(calendar: Calendar): String {
-        val date = calendar.getTime()
+        val date = calendar.time
         val formatted = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
                 .format(date)
         return formatted.substring(0, 22) + ":" + formatted.substring(22)
@@ -37,7 +36,7 @@ class ISO8601 {
         }
 
         val date = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").parse(s)
-        calendar.setTime(date)
+        calendar.time = date
         return calendar
     }
 }

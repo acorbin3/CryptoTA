@@ -34,6 +34,8 @@ import kotlinx.android.synthetic.main.activity_main.*
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
 import org.ta4j.core.Tick
 import java.util.jar.Attributes
+import kotlin.math.E
+import kotlin.math.absoluteValue
 
 
 class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -44,17 +46,19 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         var logo: ImageView = view.findViewById(R.id.main_logo)
     }
 
+
     object data {
-        var charts: HashMap<ChartStatusData.Type, Any> = HashMap()
+        var charts: HashMap<Overlay.Kind, Any> = HashMap()
+        var status: ChartStatusData.Status = ChartStatusData.Status.LOADING
     }
 
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         lateinit var recyclerViewHolder: RecyclerView.ViewHolder
         println("Creating charts")
-        parentHeight = parent?.height
+        parentHeight = parent.height
 
-        val view = LayoutInflater.from(parent?.context).inflate(R.layout.combinedchart_item_view, parent, false) as View
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.combinedchart_item_view, parent, false) as View
         recyclerViewHolder = CombinedViewHolder(view)
         if (parent != null) {
             var sizeRatio = 0.0F
@@ -79,6 +83,18 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         else if (MainActivity.data.chartList.size == 4) {
             sizeRatio = 0.58F
         }
+        else if (MainActivity.data.chartList.size == 5) {
+            sizeRatio = 0.44F
+        }
+        else if (MainActivity.data.chartList.size == 6) {
+            sizeRatio = 0.44F
+        }
+        else if (MainActivity.data.chartList.size == 7) {
+            sizeRatio = 0.44F
+        }
+        else if (MainActivity.data.chartList.size == 8) {
+            sizeRatio = 0.4F
+        }
         return sizeRatio
     }
 
@@ -93,6 +109,18 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         else if (MainActivity.data.chartList.size == 4) {
             sizeRatio = 0.14F
         }
+        else if (MainActivity.data.chartList.size == 5) {
+            sizeRatio = 0.14F
+        }
+        else if (MainActivity.data.chartList.size == 6) {
+            sizeRatio = 0.112F
+        }
+        else if (MainActivity.data.chartList.size == 7) {
+            sizeRatio = 0.09333F
+        }
+        else if (MainActivity.data.chartList.size == 8) {
+            sizeRatio = 0.08571F
+        }
         return sizeRatio
     }
 
@@ -105,7 +133,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        println("Binding charts ${list[position].type.name}- ${list[position].status}")
+        println("Binding charts ${list[position].type.name} - ${list[position].kind.name} - ${list[position].status}")
         val srcVals = FloatArray(9)
         val dstMatrix: Matrix
         val dstVals = FloatArray(9)
@@ -121,13 +149,16 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         }
         println("this.parentHeight: ${this.parentHeight} + minHeigth: ${combinedViewHolder.itemView.minimumHeight}")
         combinedViewHolder.itemView.layoutParams.height = combinedViewHolder.itemView.minimumHeight
+        data.status = list[position].status
         when (list[position].status) {
             ChartStatusData.Status.LOADING -> {
                 combinedViewHolder.chart.clear()
                 combinedViewHolder.chart.setNoDataText("Retrieving Data from web")
+
             }
             ChartStatusData.Status.UPDATE_FAILED -> {
-                combinedViewHolder.chart.setNoDataText("Coin failed, please choose another coin/exchange/currency")
+                combinedViewHolder.chart.setNoDataText("Coin failed, please choose another coin/exchange")
+                data.status = ChartStatusData.Status.LOADING_COMPLETE
             }
             ChartStatusData.Status.INTERNET_OUT -> {
                 combinedViewHolder.chart.setNoDataText("Not connected to the internet")
@@ -142,70 +173,77 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
             ChartStatusData.Status.UPDATE_OVERLAYS -> {
                 println("Updating Overlays from ChartList Adapter")
                 combinedViewHolder.chart.fillInbetweenLines = true
+                MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
                 ChartStyle(context).updateOverlays(
                         OverlayAdapter.data.list,
                         MainActivity.data.all_ta[MainActivity.data.saved_time_period],
                         combinedViewHolder.chart)
+                list[position].status = ChartStatusData.Status.LOADING_COMPLETE
 
             }
             ChartStatusData.Status.INITIAL_LOAD ->{
-                when(list[position].type){
-                    ChartStatusData.Type.VOLUME_CHART ->{
+                when(list[position].kind){
+
+                    Overlay.Kind.Volume_Bars ->{
                         ChartStyle(context).updateVolumeGraph(
                                 MainActivity.data.all_ta[MainActivity.data.saved_time_period],
                                 combinedViewHolder.chart,
                                 true
                         )
                     }
-                    ChartStatusData.Type.AROON_UP_DOWN_CHART,ChartStatusData.Type.AROON_OSCI_CHART ->{
+                    else ->{
                         combinedViewHolder.chart.clear()
                         combinedViewHolder.chart.setNoDataText("Calculating data")
                     }
                 }
             }
             ChartStatusData.Status.UPDATE_CHART -> {
-
-                when(list[position].type){
-                    ChartStatusData.Type.VOLUME_CHART ->{
+                MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
+                when(list[position].kind){
+                    Overlay.Kind.Volume_Bars ->{
                         ChartStyle(context).updateVolumeGraph(
                                 MainActivity.data.all_ta[MainActivity.data.saved_time_period],
                                 combinedViewHolder.chart,
                                 true
                         )
                     }
-                    ChartStatusData.Type.AROON_UP_DOWN_CHART,ChartStatusData.Type.AROON_OSCI_CHART ->{
+                    else ->{
                         var allLineGraphStyle: ArrayList<ChartStyle.LineGraphStyle> = ArrayList()
-                        if(list[position].type == ChartStatusData.Type.AROON_OSCI_CHART){
-                            if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonOscillatorData.size > 0) {
-                                allLineGraphStyle.add(ChartStyle.LineGraphStyle(MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonOscillatorData,
-                                        ChartStyle.LineStyle(
-                                                lineLabel = "Aroon Oscillator",
-                                                lineColor = ContextCompat.getColor(context, R.color.md_cyan_500),
-                                                filled = true,
-                                                filledColor = ContextCompat.getColor(context, R.color.md_cyan_100)
-                                        )
-                                ))
-                            }
-                            else{
-                                println("Somehow we got zero size for arronOscillatorData")
-                            }
 
+                        var entryData: ArrayList<Entry>
+
+                        for(dItem in OverlayAdapter.data.all.values) {
+                            if(list[position].kind == dItem.kindData.parentKind
+                                    && dItem.kindData.hasData){
+                                println("Adding line: " + dItem.kind)
+                                var color = OverlayAdapter.getColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
+                                var label = OverlayAdapter.getLabel(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
+                                var filled = OverlayAdapter.getfilled(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
+                                var filledColor = OverlayAdapter.getfilledColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
+                                entryData = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind)
+                                if(entryData.isNotEmpty()) {
+                                    allLineGraphStyle.add(ChartStyle.LineGraphStyle(entryData,
+                                            ChartStyle.LineStyle(
+                                                    lineLabel = label!!,
+                                                    lineColor = color!!,
+                                                    filled = filled!!,
+                                                    filledColor = filledColor!!
+                                            )
+                                    ))
+                                }
+                            }
                         }
-                        else if (list[position].type == ChartStatusData.Type.AROON_UP_DOWN_CHART){
+                        if(list[position].kind == Overlay.Kind.AroonUpDown){
                             combinedViewHolder.chart.fillInbetweenLines = false
 
-                            allLineGraphStyle.add(ChartStyle.LineGraphStyle(MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonUpIndicatorData,
-                                    ChartStyle.LineStyle(
-                                            lineLabel = "Aroon Up",
-                                            lineColor = ContextCompat.getColor(context,R.color.md_green_300)
-                                    )
-                            ))
-                            allLineGraphStyle.add(ChartStyle.LineGraphStyle(MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonDownIndicatorData,
-                                    ChartStyle.LineStyle(
-                                            lineLabel = "Aroon Down",
-                                            lineColor = ContextCompat.getColor(context,R.color.md_red_300)
-                                    )
-                            ))
+                        }
+                        else if(list[position].kind == Overlay.Kind.Stoch_Oscill){
+                            var lineLimit = LimitLine(80F)
+                            lineLimit.lineColor = ContextCompat.getColor(context,R.color.md_light_green_300)
+                            var lineLimit2 = LimitLine(20F)
+                            lineLimit2.lineColor = ContextCompat.getColor(context,R.color.md_light_green_300)
+                            combinedViewHolder.chart.axisRight.addLimitLine(lineLimit)
+                            combinedViewHolder.chart.axisRight.addLimitLine(lineLimit2)
                         }
 
                         ChartStyle(context).updateLineGraph(
@@ -214,6 +252,9 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                         )
                     }
                 }
+
+                list[position].status = ChartStatusData.Status.LOADING_COMPLETE
+                data.status = ChartStatusData.Status.LOADING_COMPLETE
             }
         }
 
@@ -227,7 +268,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         combinedViewHolder.chart.setViewPortOffsets(0F, 0F, 0F, 0F)
         combinedViewHolder.chart.viewPortHandler.refresh(dstMatrix, combinedViewHolder.chart, true)
 
-        data.charts[list[position].type] = combinedViewHolder.chart
+        data.charts[list[position].kind] = combinedViewHolder.chart
         linkGestures()
 
         combinedViewHolder.chart.setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
@@ -241,149 +282,64 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                         val legendList: MutableList<LegendEntry> = arrayListOf()
                         when(item.type){
                             ChartStatusData.Type.MAIN_CHART ->{
-                                if( MainActivity.data.all_ta[MainActivity.data.saved_time_period].candlestickData.size >= e.x.toInt()) {
-                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].candlestickData[e.x.toInt()]
+                                if( MainActivity.data.all_ta[MainActivity.data.saved_time_period].getCandlestickData(Overlay.Kind.CandleStick).size > e.x.toInt()) {
+                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getCandlestickData(Overlay.Kind.CandleStick)[e.x.toInt()]
                                     updatedText = "Candle Stick O ${values.open} H ${values.high} L ${values.low} C ${values.close}"
                                     legendList.add(LegendEntry(updatedText, Legend.LegendForm.NONE, 9f, Float.NaN, null, Color.WHITE))
                                 }
                                 for(item in OverlayAdapter.data.list){
-                                    if(item.selected){
-                                        when(item.kind){
-                                            Overlay.Kind.Bollinger_Bands ->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].bbMiddleData.size >= e.x.toInt()) {
-                                                    val valuesMiddle = MainActivity.data.all_ta[MainActivity.data.saved_time_period].bbMiddleData[e.x.toInt()]
-                                                    val valuesUpper = MainActivity.data.all_ta[MainActivity.data.saved_time_period].bbUpperData[e.x.toInt()]
-                                                    val valuesLower = MainActivity.data.all_ta[MainActivity.data.saved_time_period].bbLowerData[e.x.toInt()]
-                                                    updatedText = "Bollinger Bands - M ${valuesMiddle.y} "
-                                                    var color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    updatedText = "Bollinger Bands -U ${valuesUpper.y}"
-                                                    color = item.allIndicatorInfo[1].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    updatedText = "Bollinger Bands - L ${valuesLower.y} "
-                                                    color = item.allIndicatorInfo[2].color
+                                    if(item.selected && ! item.separateChart){
+
+                                        if(item.kindData.hasData) {
+                                            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt()) {
+
+                                                if(!item.kindData.detailed){
+                                                    var color = 0
+                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind)[e.x.toInt()]
+                                                    //Parent item that has data
+                                                    updatedText = item.allIndicatorInfo[0].selectedLegendLabel + " " + values.y
+                                                    color = item.allIndicatorInfo[0].color
                                                     legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
                                                 }
                                             }
-
-                                            Overlay.Kind.Keltner_Channel->{
-                                                if(!MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelLowerData.isEmpty()) {
-                                                    val offset = MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelLowerData.last().x - MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelLowerData.size
-                                                    val index = (e.x.toInt() - offset).toInt()
-                                                    if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelLowerData.last().x >= e.x.toInt()
-                                                            && index > 0
-                                                            && index < MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelLowerData.size) {
-                                                        //We need to offset becuase the x value is not alignt. And this is because we didnt add some values on the front end
-                                                        // of the graph becuase they made the graph not visible.
-
-                                                        val valuesMiddle = MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelMiddleData[index]
-                                                        val valuesUpper = MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelUpperData[index]
-                                                        val valuesLower = MainActivity.data.all_ta[MainActivity.data.saved_time_period].keltnerChannelLowerData[index]
-                                                        updatedText = "Keltner Channel - M ${valuesMiddle.y}"
-                                                        var color = item.allIndicatorInfo[0].color
-                                                        legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                        updatedText = "Keltner Channel - U ${valuesUpper.y}"
-                                                        color = item.allIndicatorInfo[1].color
-                                                        legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                        updatedText = "Keltner Channel - L ${valuesLower.y} "
-                                                        color = item.allIndicatorInfo[2].color
-                                                        legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    }
-                                                }
-                                            }
-
-                                            Overlay.Kind.Simple_Moving_Avg->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].smaData.size >= e.x.toInt()) {
-                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].smaData[e.x.toInt()]
-                                                    updatedText = "Simple MA ${values.y} "
-                                                    val color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                }
-                                            }
-
-                                            Overlay.Kind.Exponential_MA->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].emaData.size >= e.x.toInt()) {
-                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].emaData[e.x.toInt()]
-                                                    updatedText = "Exponential MA ${values.y} "
-                                                    val color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                }
-                                            }
-
-                                            Overlay.Kind.Parabolic_SAR->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].parabolicSAR_Data.size >= e.x.toInt()) {
-                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].parabolicSAR_Data[e.x.toInt()]
-                                                    updatedText = "Parabolic SAR ${values.y} "
-                                                    val color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                }
-                                            }
-
-                                            Overlay.Kind.Chandelier_Exit->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].chandelierExitData.size >= e.x.toInt()) {
-                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].chandelierExitData[e.x.toInt()]
-                                                    updatedText = "Chandelier Exit ${values.y} "
-                                                    val color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                }
-                                            }
-
-                                            Overlay.Kind.Ichimoku_Cloud->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_BaseData.size > 0) {
-                                                    var valuesBase = Entry()
-                                                    if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_BaseData.size >= e.x.toInt() ) {
-                                                        valuesBase = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_BaseData[e.x.toInt()]
-                                                    }
-                                                    var valuesConv = Entry()
-                                                    if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_ConversionData.size >= e.x.toInt() ) {
-                                                        valuesConv = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_ConversionData[e.x.toInt()]
-                                                    }
-                                                    var valuesLagg = Entry()
-                                                    if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_LaggingData.size >= e.x.toInt() ){
-                                                        valuesLagg = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_LaggingData[e.x.toInt()]
-                                                    }
-                                                    var valuesLeadA = Entry()
-                                                    var laggingPeriod = 0
-                                                    for(item in OverlayAdapter.data.list){
-                                                        if(item.kind == Overlay.Kind.Ichimoku_Cloud){
-                                                            laggingPeriod = item.values[item.laggingPeriod].value.toInt()
+                                        }else{
+                                            for(dItem in OverlayAdapter.data.all.values) {
+                                                if(item.kind == dItem.kindData.parentKind && dItem.kindData.hasData){
+                                                    var index = e.x.toInt()
+                                                    if(dItem.kind == Overlay.Kind.D_Ich_Cloud_Lead_A || dItem.kind == Overlay.Kind.D_Ich_Cloud_Lead_B){
+                                                        var laggingPeriod = 0
+                                                        for(item in OverlayAdapter.data.list){
+                                                            if(item.kind == Overlay.Kind.Ichimoku_Cloud){
+                                                                laggingPeriod = item.values[item.laggingPeriod].value.toInt()
+                                                            }
                                                         }
+                                                        index = e.x.toInt() - laggingPeriod
+                                                    }else if(item.kind == Overlay.Kind.Keltner_Channel){
+                                                        val size = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).size
+                                                        val lastVal = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).last().x
+                                                        val offset = lastVal - size
+                                                        index = ((e.x.toInt() - offset.absoluteValue).toInt())
                                                     }
-                                                    var index = e.x.toInt() - laggingPeriod
-                                                    if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_LeadingAData.size >= index && index > 0 ) {
-                                                        valuesLeadA = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_LeadingAData[index]
+                                                    if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind).size > index && index > 0) {
+
+                                                        var color = 0
+                                                        val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind)[index]
+                                                        updatedText = OverlayAdapter.getSelectedLegendText(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex) + " " + values.y
+                                                        color = OverlayAdapter.getColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)!!
+                                                        legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
                                                     }
-                                                    var valuesLeadB = Entry()
-                                                    if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_LeadingBData.size >= index && index > 0) {
-
-                                                        valuesLeadB = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ichCloud_LeadingBData[index]
-                                                    }
-
-                                                    updatedText = "Ich Cloud - LeadA ${valuesLeadA.y}"
-                                                    var color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    updatedText = "Ich Cloud - LeadB ${valuesLeadB.y}"
-                                                    color = item.allIndicatorInfo[1].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    updatedText = "Ich Cloud - Conv ${valuesConv.y}"
-                                                    color = item.allIndicatorInfo[2].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    updatedText = "Ich Cloud - Base ${valuesBase.y}"
-                                                    color = item.allIndicatorInfo[3].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    updatedText = "Ich Cloud - Lagg ${valuesLagg.y}"
-                                                    color = item.allIndicatorInfo[4].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-
                                                 }
                                             }
+                                        }
+                                        when(item.kind){
+
 
                                             Overlay.Kind.ZigZag->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].zigZagData.size >= 0) {
+                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.ZigZag).size > 0) {
                                                     lateinit var candidateBefore: Entry
                                                     lateinit var candidateAfter: Entry
                                                     var foundAfter = false
-                                                    for(entry in MainActivity.data.all_ta[MainActivity.data.saved_time_period].zigZagData){
+                                                    for(entry in MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.ZigZag)){
                                                         if(entry.x > e.x.toInt()){
                                                             candidateAfter = entry
                                                             foundAfter = true
@@ -406,9 +362,9 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                             }
 
                                             Overlay.Kind.Exponential_MA_Ribbon->{
-                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].emaRibbonData.size >= 0) {
-                                                    MainActivity.data.all_ta[MainActivity.data.saved_time_period].emaRibbonData.forEachIndexed { index, arrayList ->
-                                                        if(arrayList.size < e.x.toInt()) {
+                                                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).size > 0) {
+                                                    MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).forEachIndexed { index, arrayList ->
+                                                        if(arrayList.size > e.x.toInt()) {
                                                             val values = arrayList[e.x.toInt()]
                                                             updatedText = "EMA $index ${values.y} "
                                                             val color = item.allIndicatorInfo[index].color
@@ -423,42 +379,44 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                     }
                                 }
                             }
-                            ChartStatusData.Type.VOLUME_CHART ->{
-                                val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].volumeBarData[e.x.toInt()]
-                                 updatedText = "V ${values.y}"
-                                legendList.add(LegendEntry(updatedText, Legend.LegendForm.NONE, 9f, Float.NaN, null, Color.WHITE))
-                            }
-                            ChartStatusData.Type.AROON_OSCI_CHART ->{
-                                if(!MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonOscillatorData.isEmpty()) {
-                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonOscillatorData[e.x.toInt()]
-                                    var color = 0
-                                    for(item in OverlayAdapter.data.list){
-                                        if(item.kind == Overlay.Kind.AroonOsci){
-                                            color = item.allIndicatorInfo[0].color
+                            ChartStatusData.Type.SEPARATE_CHART->{
+                                for(overlay in OverlayAdapter.data.list){
+                                    if(overlay.selected && overlay.separateChart && item.kind == overlay.kind){
+
+                                        if(overlay.kindData.hasData) {
+                                            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt() && e.x.toInt() > 0) {
+
+                                                if(!overlay.kindData.detailed){
+                                                    var color = 0
+                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind)[e.x.toInt()]
+                                                    //Parent item that has data
+                                                    updatedText = overlay.allIndicatorInfo[0].selectedLegendLabel + " " + values.y
+                                                    color = overlay.allIndicatorInfo[0].color
+                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
+                                                }
+                                            }
+                                        }else{
+                                            for(dItem in OverlayAdapter.data.all.values) {
+                                                if(overlay.kind == dItem.kindData.parentKind && dItem.kindData.hasData){
+                                                    var index = e.x.toInt()
+                                                    if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind).size > index && index > 0) {
+
+                                                        var color = 0
+                                                        val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind)[index]
+                                                        updatedText = OverlayAdapter.getSelectedLegendText(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex) + " " + values.y
+                                                        color = OverlayAdapter.getColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)!!
+                                                        legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
-                                    updatedText = "Aroon Oscillator ${values.y}"
-                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
                                 }
+
                             }
-                            ChartStatusData.Type.AROON_UP_DOWN_CHART ->{
-                                if(!MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonUpIndicatorData.isEmpty()) {
-                                    val valuesDown = MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonDownIndicatorData[e.x.toInt()]
-                                    val valuesUp = MainActivity.data.all_ta[MainActivity.data.saved_time_period].aroonUpIndicatorData[e.x.toInt()]
-                                    var colorDown = 0
-                                    var colorUp = 0
-                                    for(item in OverlayAdapter.data.list){
-                                        if(item.kind == Overlay.Kind.AroonUpDown){
-                                            colorUp = item.allIndicatorInfo[0].color
-                                            colorDown = item.allIndicatorInfo[1].color
-                                        }
-                                    }
-                                    updatedText = "Aroon Up ${valuesUp.y}"
-                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, colorUp))
-                                    updatedText = "Aroon Down ${valuesDown.y}"
-                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, colorDown))
-                                }
-                            }
+
+
+
                         }
 //                        print(updatedText)
 
@@ -483,8 +441,8 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 }
                                 legendList.add(LegendEntry(timeStr, Legend.LegendForm.NONE, 9f, Float.NaN, null, 0))
                             }
-                            (data.charts[item.type] as CombinedChart).legend.setCustom(legendList)
-                            (data.charts[item.type] as CombinedChart).notifyDataSetChanged()
+                            (data.charts[item.kind] as CombinedChart).legend.setCustom(legendList)
+                            (data.charts[item.kind] as CombinedChart).notifyDataSetChanged()
 
                         }
 
@@ -542,7 +500,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         try {
             view?.clearFocus()
             val imm = view?.context?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(view?.windowToken,0)
+            imm.hideSoftInputFromWindow(view.windowToken,0)
         }catch (e: Exception){
 
         }
@@ -550,15 +508,15 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
     }
     private fun linkGestures() {
         for (orgChart in data.charts) {
-            println("OrgChar: ${orgChart.key} ")
+//            println("OrgChar: ${orgChart.key} ")
             val destCharts: ArrayList<Chart<*>> = ArrayList()
             for (destChart in data.charts) {
                 if (orgChart.key != destChart.key) {
-                    print(" ${destChart.key}")
+//                    println(" ${destChart.key}")
                     destCharts.add(destChart.value as Chart<*>)
                 }
             }
-            println()
+
             val chart = orgChart.value as CombinedChart
             chart.onChartGestureListener = MirrorChartGestureListener(orgChart.key, chart, destCharts)
         }

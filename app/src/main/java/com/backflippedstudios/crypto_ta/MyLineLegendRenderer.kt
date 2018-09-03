@@ -21,7 +21,7 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
         val filled = mGenerateFilledPathBuffer
 
         val startingIndex = bounds!!.min
-        val endingIndex: Int = bounds!!.range + bounds!!.min
+        val endingIndex: Int = bounds.range + bounds.min
         val indexInterval = 128
 
         var currentStartIndex = 0
@@ -38,7 +38,7 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
             if (currentStartIndex <= currentEndIndex) {
 
                 //START GEN FILLED PATH
-                val boundaryEntry = dataSet.fillFormatter.getFillLineBoundary()
+                val boundaryEntry = dataSet.fillFormatter.fillLineBoundary
                 val phaseY = mAnimator.phaseY
                 filled.reset()
 
@@ -65,7 +65,7 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                             filled.lineTo(entry.x, entry.y * phaseY)
                         }
 //                        println("(${currentEntry.x},${currentEntry.y})")
-                        filled.lineTo(currentEntry!!.getX(), currentEntry!!.getY() * phaseY)
+                        filled.lineTo(currentEntry!!.x, currentEntry.y * phaseY)
                     }
                     else{
                         //if we found a good path, time to move on and update currentEndIndex  & currentStartIndex
@@ -135,7 +135,7 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                     previousEntry = boundaryEntry[x]
                     if(dataSet.getEntryForIndex(x).y <= previousEntry.y) {
 //                        println("(${previousEntry.x},${previousEntry.y})")
-                        filled.lineTo(previousEntry!!.getX(), previousEntry!!.getY() * phaseY)
+                        filled.lineTo(previousEntry!!.x, previousEntry.y * phaseY)
                     }
                 }
 
@@ -149,13 +149,13 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                 //Some issues where the left part goes to zero zero
                 trans?.pathValueToPixel(filled)
 
-                val drawable = dataSet.getFillDrawable()
+                val drawable = dataSet.fillDrawable
                 if (drawable != null) {
 
                     drawFilledPath(c, filled, drawable)
                 } else {
 
-                    drawFilledPath(c, filled, dataSet.getFillColor(), dataSet.getFillAlpha())
+                    drawFilledPath(c, filled, dataSet.fillColor, dataSet.fillAlpha)
                 }
             }
 
@@ -174,7 +174,7 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
     private fun generateFilledPath(dataSet: ILineDataSet, startIndex: Int, endIndex: Int, outputPath: Path) {
 
         //Call the custom method to retrieve the dataset for other line
-        val boundaryEntry = dataSet.fillFormatter.getFillLineBoundary()
+        val boundaryEntry = dataSet.fillFormatter.fillLineBoundary
         println("Calling custom gen Filled Path")
 
         val phaseY = mAnimator.phaseY
@@ -199,15 +199,15 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
         for (x in startIndex + 1..endIndex) {
             currentEntry = dataSet.getEntryForIndex(x)
             if(boundaryEntry[x].y >= currentEntry.y) {
-                outputPath.lineTo(currentEntry!!.getX(), currentEntry!!.getY() * phaseY)
+                outputPath.lineTo(currentEntry!!.x, currentEntry.y * phaseY)
             }
-            println("currentEntry!!.getX() ${currentEntry!!.getX()} currentEntry[$x].y ${currentEntry!!.getY()}")
+            println("currentEntry!!.getX() ${currentEntry!!.x} currentEntry[$x].y ${currentEntry.y}")
         }
 
         // close up
         if (currentEntry != null && previousEntry != null) {
-            println("closeUP currentEntry!!.getX() ${currentEntry!!.getX()} previousEntry!!.getY() ${previousEntry!!.getY()}")
-            outputPath.lineTo(currentEntry!!.getX(), previousEntry!!.getY())
+            println("closeUP currentEntry!!.getX() ${currentEntry.x} previousEntry!!.getY() ${previousEntry.y}")
+            outputPath.lineTo(currentEntry.x, previousEntry.y)
         }
 
         //Draw the path towards the other line
@@ -215,9 +215,9 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
         for (x in endIndex downTo startIndex + 1) {
             previousEntry = boundaryEntry[x]
             if(dataSet.getEntryForIndex(x).y <= previousEntry.y) {
-                outputPath.lineTo(previousEntry!!.getX(), previousEntry!!.getY() * phaseY)
+                outputPath.lineTo(previousEntry!!.x, previousEntry.y * phaseY)
             }
-            println("previousEntry!!.getX() ${previousEntry!!.getX()} boundaryEntry[$x].y ${previousEntry!!.getY()}")
+            println("previousEntry!!.getX() ${previousEntry!!.x} boundaryEntry[$x].y ${previousEntry.y}")
         }
 
         outputPath.close()

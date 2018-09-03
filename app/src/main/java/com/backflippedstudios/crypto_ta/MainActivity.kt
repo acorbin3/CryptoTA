@@ -40,17 +40,17 @@ import com.backflippedstudios.crypto_ta.dropdownmenus.CoinSimpleArrowDropdownAda
 import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
 import com.backflippedstudios.crypto_ta.dropdownmenus.SimpleArrowDropdownAdapter
 import com.backflippedstudios.crypto_ta.recyclerviews.ChartListAdapter
-import com.backflippedstudios.crypto_ta.recyclerviews.RecyclerViewMargin
 import com.google.android.gms.tasks.Task
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.firestore.QuerySnapshot
-import com.google.firebase.messaging.FirebaseMessaging
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.io.File
 import java.io.FileOutputStream
+import java.lang.Thread.sleep
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 
@@ -67,38 +67,37 @@ class MainActivity : AppCompatActivity() {
     private var spinnerTimeFirstRun: Boolean = true
     private var spinnerCoinFirstRun: Boolean = true
     private var spinnerExchangeFirstRun: Boolean = true
-    private var currencyFirstRun: Boolean = true
     var context: Context = this
     private lateinit var layout: View
     val MY_PERMISSIONS_REQUEST_WRITE_FILE = 0
     val MY_PERMISSIONS_REQUEST_READ_FILE = 0
+    private val regressionTesting = false
 
 
-
-
-    object data{
-        val all_ta =  Array<TechnicalAnalysis>(DataSource.Interval.values().size,{TechnicalAnalysis(ArrayList<Tick>())})
+    object data {
+        val all_ta = Array<TechnicalAnalysis>(DataSource.Interval.values().size, { TechnicalAnalysis(ArrayList<Tick>()) })
         var mChart: CombinedChart? = null
         var saved_time_period: Int = 0
         var dataSource: DataSource = DataSource()
         var coinSelected: String = "ETH"
-        var exchangeSelected: String ="Gdax"
+        var exchangeSelected: String = "Gdax"
         var currencySelected: String = "USD"
         var runningTA: Boolean = false
         var endTA: Boolean = false
         var prefs: SharedPreferences? = null
-        var chartList : java.util.ArrayList<ChartStatusData> = ArrayList()
+        var chartList: java.util.ArrayList<ChartStatusData> = ArrayList()
         lateinit var rvCharts: RecyclerView
         lateinit var rvIndicatorsOverlays: RecyclerView
         var loading = false
         var matrixLocation: Matrix? = null
-        var tv_live_price : TextView? = null
+        var tv_live_price: TextView? = null
         var lastOrientation: Int = Configuration.ORIENTATION_PORTRAIT
         var runningOrientationLoad: Boolean = false
+        var isInitialLoadComplete: Boolean = false
         lateinit var ivDrawer: ImageView
         lateinit var ivCollapseArrow: ImageView
         var displayWidth: Int = 0
-        var lastMainTouchChart: ChartStatusData.Type? = null
+        var lastMainTouchChart: Overlay.Kind? = null
         var uuid: String = ""
         lateinit var mFirebaseAnalytics: FirebaseAnalytics
         val systemUIVisibilityPermissions = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -138,12 +137,14 @@ class MainActivity : AppCompatActivity() {
         val decorView = window.decorView
         decorView.systemUiVisibility = data.systemUIVisibilityPermissions
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        data.lastOrientation = resources.configuration.orientation
         println("_____ON_CREATE______ data.runningOrientationLoad: ${data.runningOrientationLoad}")
 
-        val openPlayStore :Boolean? = intent.getStringExtra("openPlayStore")?.toBoolean()
-        if(openPlayStore != null && openPlayStore){
+        val openPlayStore: Boolean? = intent.getStringExtra("openPlayStore")?.toBoolean()
+        if (openPlayStore != null && openPlayStore) {
             println("Found open play store")
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
@@ -153,23 +154,6 @@ class MainActivity : AppCompatActivity() {
         }
         data.mFirebaseAnalytics = FirebaseAnalytics.getInstance(this)
 
-
-
-//// Add a new document with a generated ID
-//db.collection("users")
-//        .add(user)
-//        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-//            @Override
-//            public void onSuccess(DocumentReference documentReference) {
-//                Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.getId());
-//            }
-//        })
-//        .addOnFailureListener(new OnFailureListener() {
-//            @Override
-//            public void onFailure(@NonNull Exception e) {
-//                Log.w(TAG, "Error adding document", e);
-//            }
-//        });
 
         println("Loading from scratch")
         data.displayWidth = windowManager.defaultDisplay.width * 2
@@ -195,7 +179,7 @@ class MainActivity : AppCompatActivity() {
         data.ivCollapseArrow = b_collapse_arrow
 
         val internetOn = isInternetOn()
-        if(internetOn) {
+        if (internetOn) {
             iv_share_screenshot.setOnClickListener {
 
                 requestWritePermission()
@@ -210,7 +194,7 @@ class MainActivity : AppCompatActivity() {
 
         swipe_to_refresh_layout.isRefreshing = true
         var result: Task<QuerySnapshot>? = null
-        if(internetOn) {
+        if (internetOn) {
             //set up spinner_time_period
             val timePeriods = ArrayList<String>(resources.getStringArray(R.array.time_periods).asList())
             val spinnerAdapter = SimpleArrowDropdownAdapter(this, R.layout.spinner_dropdown_main_view_with_arrow, timePeriods)
@@ -241,328 +225,415 @@ class MainActivity : AppCompatActivity() {
             }
 
             //Update the coin's
-            if (data.chartList.size == 0 && internetOn) {//Have not been loaded before
+            if (data.chartList.size == 0 && internetOn && !data.isInitialLoadComplete) {//Have not been loaded before
 //                data.dataSource.initCoinsV2()
                 result = data.dataSource.intCoins3()
 //                data.dataSource.initExchangesForCoin(data.coinSelected.toLowerCase())
             }
         }
+        if(!data.isInitialLoadComplete) {
+            result?.addOnCompleteListener { it ->
+                if (it.isSuccessful) {
 
-        result?.addOnCompleteListener {
-            if(it.isSuccessful){
+                    processInit(internetOn)
+                }
+            }
+        }else{
+            for (overlay in OverlayAdapter.data.list) {
+                if (!overlay.separateChart and overlay.selected) {
+                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART, overlay.kind)
+                }
+            }
+            processInit(internetOn)
+        }
 
-                //Dropdown for coins
-                if(internetOn) {
-                    var strListCoins: ArrayList<String>
-                    val validCoins: Map<String, DataSource.Asset> = DataSource.data.coins.filter { !it.value.FiatLegalTender }
-                    var coinPairs: HashSet<String> = HashSet()
-                    for (coin in validCoins.toSortedMap().iterator()) {
-                        //if the symbol and name are the same, just print symbol
-                        for(exchange in coin.value.exchanges){
-                            if(exchange.paring.contains(coin.value.symbol)) {
-//                        println(exchange.paring.replace(coin.value.symbol,coin.value.symbol+"/"))
-                                if (coin.value.symbol.toUpperCase() != coin.value.name.toUpperCase()) {
-                                    coinPairs.add(exchange.paring.toUpperCase().replace(coin.value.symbol.toUpperCase(),
-                                            coin.value.symbol.toUpperCase() + "-" + coin.value.name.capitalize()+"/"))
-                                } else {
-                                    coinPairs.add(exchange.paring.replace(coin.value.symbol,coin.value.symbol+"/").toUpperCase())
-                                }
 
-                            }
+    }
+
+    fun processInit(internetOn: Boolean) {
+        var strListCoins: ArrayList<String> = ArrayList()
+        //Dropdown for coins
+        var strListCoins1 = strListCoins
+        if (internetOn) {
+
+            val validCoins: Map<String, DataSource.Asset> = DataSource.data.coins.filter { !it.value.FiatLegalTender }
+            var coinPairs: HashSet<String> = HashSet()
+            for (coin in validCoins.toSortedMap().iterator()) {
+                //if the symbol and name are the same, just print symbol
+    //                        println("Coin: ${coin.value.name}")
+                for (exchange in coin.value.exchanges) {
+    //                            println("\tpair: ${exchange.paring}")
+                    if (exchange.paring.contains(coin.value.symbol)) {
+    //                        println(exchange.paring.replace(coin.value.symbol,coin.value.symbol+"/"))
+                        coin.value.name.replace("/", "_")
+                        var name = coin.value.name
+                        name = name.replace("/", "_")
+    //                                println("name: $name")
+                        if (coin.value.symbol.toUpperCase() != name.toUpperCase()) {
+                            coinPairs.add(exchange.paring.toUpperCase().replaceFirst(coin.value.symbol.toUpperCase(),
+                                    coin.value.symbol.toUpperCase() + "-" + name.capitalize() + "/"))
+                        } else {
+                            coinPairs.add(exchange.paring.replace(coin.value.symbol, coin.value.symbol + "/").toUpperCase())
                         }
-
-                    }
-//            println(coinPairs)
-                    strListCoins = ArrayList(coinPairs)
-                    (strListCoins).sort()
-
-                    val coinAdapter = CoinSimpleArrowDropdownAdapter(this, R.layout.spinner_dropdown_main_view_with_arrow, strListCoins)
-                    coinAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
-
-                    //Get index for selected coin
-                    val coinIndex: Int = strListCoins
-                            .firstOrNull { it.contains(data.coinSelected, false) }
-                            ?.let { strListCoins.indexOf(it) }
-                            ?: 0
-                    spinner_coin_type.adapter = coinAdapter
-                    spinner_coin_type.setSelection(coinIndex)
-                    spinner_coin_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                        override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
-                            if (spinnerCoinFirstRun) {
-                                spinnerCoinFirstRun = false
-                                return
-                            }
-                            if (data.runningTA) data.endTA = true
-                            //Update shared preferences
-                            val editor = data.prefs!!.edit()
-                            var coinPair = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
-
-                            //Remove first coin description
-                            val dashIndex = coinPair?.indexOf("-")
-                            val slashIndex = coinPair?.indexOf("/")
-                            if(dashIndex!! > 0) {
-                                coinPair = coinPair?.removeRange(dashIndex!!, slashIndex!!)
-                            }
-                            //Get the selected coin and currency
-                            val selectedCoin = coinPair?.substringBefore("/")!!
-                            val selectedCurrency = coinPair?.substringAfter("/")!!
-                            editor.putString(COIN_SELECTED, selectedCoin)
-                            editor.putString(CURRENCY_SELECTED, selectedCurrency)
-                            editor.apply()
-                            var bundle = Bundle()
-                            bundle.putString("uuid", data.uuid)
-                            bundle.putString("base_coin", selectedCoin)
-                            bundle.putString("currency", selectedCurrency)
-                            data.mFirebaseAnalytics.logEvent("changing_coin", bundle)
-
-                            if (data.coinSelected != selectedCoin || data.currencySelected != selectedCurrency ) {
-
-                                var len = resources.getStringArray(R.array.time_periods).size - 1
-                                println("Clearing all TA 0..$len")
-                                for (i in 0..len) {
-                                    data.all_ta[i].clearAll()
-                                }
-                                data.coinSelected = selectedCoin
-                                data.currencySelected = selectedCurrency
-//                        data.dataSource.initExchangesForCoin(data.coinSelected.toLowerCase())
-                                updateExchangeDueToCoinUpdate()
-//                        updateCurrencyList()
-//                println("update graph from coin change")
-                                //Update the chart with the latest data from the web
-                                updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
-
-                            }
-
-
-                        }
-
-                        override fun onNothingSelected(p0: AdapterView<*>?) = Unit
 
                     }
                 }
 
-                //Dropdown for exchanges
-                if(internetOn) {
-                    updateExchangeDueToCoinUpdate()
-                    spinner_exchange_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                        override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
-                            if (spinnerExchangeFirstRun) {
-                                spinnerExchangeFirstRun = false
-                                return
-                            }
-                            if (data.runningTA) data.endTA = true
-                            //Update shared preferences
-                            val editor = data.prefs!!.edit()
-                            val row = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
-                            editor.putString(EXCHANGE_SELETED, row)
-                            editor.apply()
-                            var bundle = Bundle()
-                            bundle.putString("uuid", data.uuid)
-                            bundle.putString("select_exchange", row.toString());
-                            data.mFirebaseAnalytics.logEvent("changing_exchange", bundle)
-                            println("Changing exchange to ${row.toString()} from ${data.exchangeSelected}")
-                            if (data.exchangeSelected != row.toString()) {
+            }
 
-                                var len = resources.getStringArray(R.array.time_periods).size - 1
-                                println("Clearing all TA 0..$len")
-                                for (i in 0..len) {
-                                    data.all_ta[i].clearAll()
-                                }
-                                data.exchangeSelected = row.toString()
-                                //Update the currancies
-//                        updateCurrencyList()
-                                println("update graph from exchange change")
-                                //Update the chart with the latest data from the web
-                                updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
-                            }
+            strListCoins1 = ArrayList(coinPairs)
+            (strListCoins1).sort()
+            println(strListCoins1)
 
 
+            val coinAdapter = CoinSimpleArrowDropdownAdapter(this, R.layout.spinner_dropdown_main_view_with_arrow, strListCoins1)
+            coinAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
+
+            //Get index for selected coin
+            val coinIndex: Int = coinPairs
+
+                    .firstOrNull {
+                        var coinSelect = it.substringBefore("/")
+                        if (coinSelect.contains("-")) {
+                            coinSelect = coinSelect.substringBefore("-")
                         }
+                        val currencySelect = it.substringAfter("/")
+    //                                println("$coinSelect == ${data.coinSelected}; $currencySelect == ${data.currencySelected}")
+                        coinSelect.contentEquals(data.coinSelected) && currencySelect.contentEquals(data.currencySelected)
+                    }
+                    ?.let { strListCoins1.indexOf(it) }
+                    ?: 0
+            spinner_coin_type.adapter = coinAdapter
+            spinner_coin_type.setSelection(coinIndex)
+            spinner_coin_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
+                    if (spinnerCoinFirstRun) {
+                        spinnerCoinFirstRun = false
+                        return
+                    }
+                    if (data.runningTA) data.endTA = true
+                    //Update shared preferences
+                    val editor = data.prefs!!.edit()
+                    val coinPair = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
 
-                        override fun onNothingSelected(p0: AdapterView<*>?) = Unit
+                    //Remove first coin description
+    //                            val dashIndex = coinPair?.indexOf("-")
+    //                            val slashIndex = coinPair?.indexOf("/")
+    //                            if(dashIndex!! > 0) {
+    //                                coinPair = coinPair?.removeRange(dashIndex!!, slashIndex!!)
+    //                            }
+                    //Get the selected coin and currency
+                    var selectedCoin = coinPair?.substringBefore("/")!!
+                    if (selectedCoin.contains("-")) {
+                        selectedCoin = selectedCoin.substringBefore("-")
+                    }
+                    val selectedCurrency = coinPair.substringAfter("/")
+                    editor.putString(COIN_SELECTED, selectedCoin)
+                    editor.putString(CURRENCY_SELECTED, selectedCurrency)
+                    editor.apply()
+                    val bundle = Bundle()
+                    bundle.putString("uuid", data.uuid)
+                    bundle.putString("base_coin", selectedCoin)
+                    bundle.putString("currency", selectedCurrency)
+                    data.mFirebaseAnalytics.logEvent("changing_coin", bundle)
+
+                    if (data.coinSelected != selectedCoin || data.currencySelected != selectedCurrency) {
+
+                        var len = resources.getStringArray(R.array.time_periods).size - 1
+                        println("Clearing all TA 0..$len")
+                        for (i in 0..len) {
+                            data.all_ta[i].clearAll()
+                        }
+                        data.coinSelected = selectedCoin
+                        data.currencySelected = selectedCurrency
+    //                        data.dataSource.initExchangesForCoin(data.coinSelected.toLowerCase())
+                        updateExchangeDueToCoinUpdate()
+    //                        updateCurrencyList()
+    //                println("update graph from coin change")
+                        //Update the chart with the latest data from the web
+                        updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true && !data.isInitialLoadComplete)
 
                     }
 
+
                 }
 
-                //Live price
-                if(internetOn) {
+                override fun onNothingSelected(p0: AdapterView<*>?) = Unit
 
-                    //Initial value of live price
-                    tv_live_price.text = data.dataSource.getCurrentValue(
-                            data.coinSelected,
+            }
+        }
+
+        //Dropdown for exchanges
+        if (internetOn) {
+            updateExchangeDueToCoinUpdate()
+            spinner_exchange_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
+                    if (spinnerExchangeFirstRun) {
+                        spinnerExchangeFirstRun = false
+                        return
+                    }
+                    if (data.runningTA) data.endTA = true
+                    //Update shared preferences
+                    val editor = data.prefs!!.edit()
+                    val row = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
+                    editor.putString(EXCHANGE_SELETED, row)
+                    editor.apply()
+                    val bundle = Bundle()
+                    bundle.putString("uuid", data.uuid)
+                    bundle.putString("select_exchange", row.toString())
+                    data.mFirebaseAnalytics.logEvent("changing_exchange", bundle)
+                    println("Changing exchange to ${row.toString()} from ${data.exchangeSelected}")
+                    if (data.exchangeSelected != row.toString()) {
+
+                        var len = resources.getStringArray(R.array.time_periods).size - 1
+                        println("Clearing all TA 0..$len")
+                        for (i in 0..len) {
+                            data.all_ta[i].clearAll()
+                        }
+                        data.exchangeSelected = row.toString()
+                        //Update the currancies
+    //                        updateCurrencyList()
+                        println("update graph from exchange change")
+                        //Update the chart with the latest data from the web
+                        updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
+                    }
+
+
+                }
+
+                override fun onNothingSelected(p0: AdapterView<*>?) = Unit
+
+            }
+
+        }
+
+        //Live price
+        if (internetOn) {
+
+            //Initial value of live price
+            tv_live_price.text = data.dataSource.getCurrentValue(
+                    data.coinSelected,
+                    data.exchangeSelected,
+                    data.currencySelected).toString()
+            //Populate exchange data for BTC so we can look up data for USD conversion
+            if (data.coinSelected.toLowerCase() != "btc")
+                data.dataSource.initExchangesForCoin("btc")
+            if (!data.currencySelected.toLowerCase().contains("usd")) {
+                tv_usd_value.text = "$" + data.dataSource.getUSDValue(
+                        data.coinSelected,
+                        data.exchangeSelected).toString()
+            } else {
+                //Case for when we are already looking at BTC to USD, no need to do conversion
+                tv_usd_value.text = "$" + data.dataSource.getCurrentValue(
+                        data.coinSelected,
+                        data.exchangeSelected,
+                        data.currencySelected).toString()
+            }
+
+            //Create task to update every 5 seconds
+            val timer = Timer()
+            timer.schedule(object : TimerTask() {
+                override fun run() {
+                    val newPrice = data.dataSource.getCurrentValue(data.coinSelected,
                             data.exchangeSelected,
-                            data.currencySelected).toString()
-                    //Populate exchange data for BTC so we can look up data for USD conversion
-                    if (data.coinSelected.toLowerCase() != "btc")
-                        data.dataSource.initExchangesForCoin("btc")
-                    if(!data.currencySelected.toLowerCase().contains("usd")) {
-                        tv_usd_value.text = "$" + data.dataSource.getUSDValue(
-                                data.coinSelected,
-                                data.exchangeSelected).toString()
-                    }else{
-                        //Case for when we are already looking at BTC to USD, no need to do conversion
-                        tv_usd_value.text = "$" + data.dataSource.getCurrentValue(
-                                data.coinSelected,
-                                data.exchangeSelected,
-                                data.currencySelected).toString()
+                            data.currencySelected)
+                    var newUSDPrice = data.dataSource.getUSDValue(
+                            data.coinSelected,
+                            data.exchangeSelected)
+                    var color: Int = ContextCompat.getColor(context, R.color.md_white_1000)
+                    var oldPrice: Float = data.currentCoinRatio
+                    if (oldPrice == newPrice) {
+                        color = ContextCompat.getColor(context, R.color.md_white_1000)
+                    } else if (oldPrice > newPrice) {
+                        color = ContextCompat.getColor(context, R.color.md_red_500)
+                    } else if (oldPrice < newPrice) {
+                        color = ContextCompat.getColor(context, R.color.md_green_500)
                     }
+                    runOnUiThread {
 
-                    //Create task to update every 5 seconds
-                    val timer = Timer()
-                    timer.schedule(object : TimerTask() {
-                        override fun run() {
-                            val newPrice = data.dataSource.getCurrentValue(data.coinSelected,
-                                    data.exchangeSelected,
-                                    data.currencySelected)
-                            var newUSDPrice = data.dataSource.getUSDValue(
-                                    data.coinSelected,
-                                    data.exchangeSelected)
-                            var color: Int = ContextCompat.getColor(context, R.color.md_white_1000)
-                            var oldPrice: Float = data.currentCoinRatio
-                            if (oldPrice == newPrice) {
-                                color = ContextCompat.getColor(context, R.color.md_white_1000)
-                            } else if (oldPrice > newPrice) {
-                                color = ContextCompat.getColor(context, R.color.md_red_500)
-                            } else if (oldPrice < newPrice) {
-                                color = ContextCompat.getColor(context, R.color.md_green_500)
+                        tv_live_price.setTextColor(color)
+                        tv_usd_value.setTextColor(color)
+
+                        var coinPair = data.coinSelected + "/" + data.currencySelected + " "
+                        try {
+                            var diff = (newPrice - oldPrice).toString()
+
+                            diff.replace(",", ".")
+                            diff = "%.6f".format(diff.toFloat())
+    //                                    println("$diff $oldPrice $newPrice")
+                            tv_live_price.text = coinPair + newPrice.toString() +
+                                    "(" + (diff) + ")"
+
+                            if (newUSDPrice > 1) {
+                                newUSDPrice = "%.2f".format(newUSDPrice).toFloat()
+                            } else {
+                                newUSDPrice = "%.4f".format(newUSDPrice).toFloat()
                             }
-                            runOnUiThread {
-
-                                tv_live_price.setTextColor(color)
-                                tv_usd_value.setTextColor(color)
-
-                                var coinPair = data.coinSelected + "/" + data.currencySelected + " "
-                                var diff = "%.6f".format(newPrice - oldPrice).toFloat()
-                                tv_live_price.text = coinPair + newPrice.toString() +
-                                        "(" + (diff).toString() + ")"
-
-                                if (newUSDPrice > 1) {
-                                    newUSDPrice = "%.2f".format(newUSDPrice).toFloat()
-                                } else {
-                                    newUSDPrice = "%.4f".format(newUSDPrice).toFloat()
-                                }
-                                diff = "%.4f".format(newUSDPrice - data.currentUSDValue).toFloat()
-                                if(!data.currencySelected.contains("USD")) {
-                                    tv_usd_value.text = data.coinSelected + "/USD $" + newUSDPrice.toString() +
-                                            "(" + diff.toString() + ")"
-                                }else{
-                                    //Case for when we are already looking at BTC to USD, no need to do conversion
-                                    tv_usd_value.text = tv_live_price.text
-                                }
-
-
-                                data.currentCoinRatio = newPrice
-                                data.currentUSDValue = newUSDPrice
+                            diff = (newUSDPrice - data.currentUSDValue).toString()
+                            diff.replace(",", ".")
+                            diff = "%.4f".format(diff.toFloat())
+                            if (!data.currencySelected.contains("USD")) {
+                                tv_usd_value.text = data.coinSelected + "/USD $" + newUSDPrice.toString() +
+                                        "(" + diff + ")"
+                            } else {
+                                //Case for when we are already looking at BTC to USD, no need to do conversion
+                                tv_usd_value.text = tv_live_price.text
                             }
-                        }
-                    }, 0, 5000); //it executes this every 5000ms
 
-                    //Add list for Overlay Adapter
-                    val list = ArrayList<Overlay>()
-                    for (item in Overlay.Kind.values()) {
-                        println("item " + item.name)
-                        var overlay = Overlay(item)
-                        if(overlay.kindData.visible) {
-                            overlay.updateColors(context)
-                            list.add(overlay)
-                        }
-                    }
-                    //Init dropdown overlays
 
-                    indicators_recycler_view.adapter = OverlayAdapter(this, list)
-                    indicators_recycler_view.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
-                    indicators_recycler_view.setHasFixedSize(true)
-                    data.rvIndicatorsOverlays = indicators_recycler_view
-                    data.rvIndicatorsOverlays.addItemDecoration(DividerItemDecoration(this,LinearLayoutManager.VERTICAL))
-
-                    //Set the initial style for the chart
-                    if (data.chartList.isEmpty()) {
-                        data.chartList.add(data.chartList.size, ChartStatusData(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART))
-                        for(overlay in OverlayAdapter.data.list){
-                            if(overlay.separateChart and overlay.selected){
-                                data.chartList.add(data.chartList.size, ChartStatusData(ChartStatusData.Status.LOADING, overlay.chartType))
-                            }
-                        }
-                    } else {
-                        updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART)
-                        for (overlay in OverlayAdapter.data.list) {
-                            if (overlay.separateChart and overlay.selected) {
-                                updateChartStatus(ChartStatusData.Status.LOADING, overlay.chartType)
-                            }
+                            data.currentCoinRatio = newPrice
+                            data.currentUSDValue = newUSDPrice
+                        } catch (e: Exception) {
                         }
                     }
                 }
+            }, 0, 5000) //it executes this every 5000ms
 
+            //Add list for Overlay Adapter
+            val list = ArrayList<Overlay>()
+            val allList = HashMap<Overlay.Kind, Overlay>()
+            for (item in Overlay.Kind.values()) {
+                println("item " + item.name)
+                var overlay = Overlay(item)
+                if (overlay.kindData.visible) {
+                    overlay.updateColors(context)
+                    list.add(overlay)
+                }
+                allList[item] = overlay
+            }
+            //Init dropdown overlays
 
+            indicators_recycler_view.adapter = OverlayAdapter(this, list, allList)
+            indicators_recycler_view.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+            indicators_recycler_view.setHasFixedSize(true)
+            data.rvIndicatorsOverlays = indicators_recycler_view
+            data.rvIndicatorsOverlays.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
 
-                //Internet not on
-                if(!internetOn) {
-                    if (data.chartList.isEmpty()) {
-                        data.chartList.add(ChartStatusData(ChartStatusData.Status.INTERNET_OUT, ChartStatusData.Type.MAIN_CHART))
+            //Set the initial style for the chart
+            if (data.chartList.isEmpty()) {
+                data.chartList.add(data.chartList.size, ChartStatusData(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None))
+                for (overlay in OverlayAdapter.data.list) {
+                    if (overlay.separateChart and overlay.selected) {
+                        data.chartList.add(data.chartList.size, ChartStatusData(ChartStatusData.Status.LOADING, ChartStatusData.Type.SEPARATE_CHART, overlay.kind))
                     }
                 }
-
-                all_charts_recycler_view.adapter = ChartListAdapter(this, data.chartList)
-                all_charts_recycler_view.layoutManager = LinearLayoutManager(this)
-                all_charts_recycler_view.adapter.notifyDataSetChanged()
-                all_charts_recycler_view.addItemDecoration(RecyclerViewMargin(this))
-                all_charts_recycler_view.setOnClickListener {
-                    if (indicators_recycler_view.visibility == View.VISIBLE) {
-                        hideIndicatorsList()
+            } else {
+                updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None)
+                for (overlay in OverlayAdapter.data.list) {
+                    if (overlay.separateChart and overlay.selected) {
+                        updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                     }
                 }
-
-                data.rvCharts = all_charts_recycler_view
-
-                //On swipe down, refresh overlays
-                if(internetOn) {
-                    swipe_to_refresh_layout.setOnRefreshListener {
-                        println("Updating Graph")
-                        if (!data.loading) {
-                            updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
-                        }
-                    }
-                }
-
-                b_drawer.setOnClickListener {
-                    if(indicators_recycler_view.visibility == View.VISIBLE){
-                        hideIndicatorsList()
-                    }else{
-                        displayIndicatorList()
-                    }
-
-                }
-
-                b_drawer.isClickable = false
-
-                //Updating overlays
-                if(internetOn) {
-                    swipe_to_refresh_layout.isRefreshing = true
-
-                    data.rvIndicatorsOverlays.setBackgroundColor(ContextCompat.getColor(this, R.color.md_grey_700))
-                    data.rvIndicatorsOverlays.alpha = 0F
-                    data.rvIndicatorsOverlays.setHasFixedSize(true)
-
-                    data.rvIndicatorsOverlays.isDrawingCacheEnabled = true
-                    data.rvIndicatorsOverlays.drawingCacheQuality = View.DRAWING_CACHE_QUALITY_HIGH
-                    data.rvIndicatorsOverlays.layoutParams.height = 550
-
-                    //Update the initial graph
-                    data.loading = false
-                    println("Finished loading: ${data.loading}")
-
-                    updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, false)
-
-
-                }
-
-                data.runningOrientationLoad = false
             }
         }
 
 
+        //Internet not on
+        if (!internetOn) {
+            if (data.chartList.isEmpty()) {
+                data.chartList.add(ChartStatusData(ChartStatusData.Status.INTERNET_OUT, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None))
+            }
+        }
 
+        all_charts_recycler_view.adapter = ChartListAdapter(this, data.chartList)
+        all_charts_recycler_view.layoutManager = LinearLayoutManager(this)
+        (all_charts_recycler_view.adapter as ChartListAdapter).notifyDataSetChanged()
+        //                all_charts_recycler_view.addItemDecoration(RecyclerViewMargin(this))
+        all_charts_recycler_view.setOnClickListener {
+            if (indicators_recycler_view.visibility == View.VISIBLE) {
+                hideIndicatorsList()
+            }
+        }
+
+        data.rvCharts = all_charts_recycler_view
+
+        //On swipe down, refresh overlays
+        if (internetOn) {
+            swipe_to_refresh_layout.setOnRefreshListener {
+                println("Updating Graph")
+                if (!data.loading) {
+                    updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
+                }
+            }
+        }
+
+        b_drawer.setOnClickListener {
+            if (indicators_recycler_view.visibility == View.VISIBLE) {
+                hideIndicatorsList()
+            } else {
+                displayIndicatorList()
+            }
+
+        }
+
+        b_drawer.isClickable = false
+
+        //Updating overlays
+        if (internetOn) {
+            swipe_to_refresh_layout.isRefreshing = true
+
+            data.rvIndicatorsOverlays.setBackgroundColor(ContextCompat.getColor(this, R.color.md_grey_700))
+            data.rvIndicatorsOverlays.alpha = 0F
+            data.rvIndicatorsOverlays.setHasFixedSize(true)
+
+            data.rvIndicatorsOverlays.isDrawingCacheEnabled = true
+            data.rvIndicatorsOverlays.drawingCacheQuality = View.DRAWING_CACHE_QUALITY_HIGH
+            data.rvIndicatorsOverlays.layoutParams.height = 550
+
+            //Update the initial graph
+            data.loading = false
+            println("Finished loading: ${data.loading}")
+
+            if (!regressionTesting) {
+                updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, false)
+            }
+
+
+        }
+
+        data.runningOrientationLoad = false
+        data.isInitialLoadComplete = true
+
+        if (regressionTesting && internetOn) {
+            AsyncTask.execute {
+                for (pair in strListCoins1) {
+
+                    var selectedCoin = pair.substringBefore("/")
+                    if (selectedCoin.contains("-")) {
+                        selectedCoin = selectedCoin.substringBefore("-")
+                    }
+                    val selectedCurrency = pair.substringAfter("/")
+                    data.coinSelected = selectedCoin
+                    data.currencySelected = selectedCurrency
+
+                    val coinIndex: Int = strListCoins1
+
+                            .firstOrNull {
+                                var coinSelect = it.substringBefore("/")
+                                if (coinSelect.contains("-")) {
+                                    coinSelect = coinSelect.substringBefore("-")
+                                }
+                                var currencySelect = it.substringAfter("/")
+    //                                println("$coinSelect == ${data.coinSelected}; $currencySelect == ${data.currencySelected}")
+                                coinSelect.contentEquals(data.coinSelected) && currencySelect.contentEquals(data.currencySelected)
+                            }
+                            ?.let { strListCoins1.indexOf(it) }
+                            ?: 0
+                    runOnUiThread {
+                        spinner_coin_type.setSelection(coinIndex)
+                    }
+                    updateExchangeDueToCoinUpdate(false)
+                    executeGraphUpdate(data.saved_time_period, selectedCoin, data.exchangeSelected, selectedCurrency, true, true)
+
+                    var loadingComplete = false
+                    while (!loadingComplete) {
+                        loadingComplete = ChartListAdapter.data.status == ChartStatusData.Status.LOADING_COMPLETE
+                        sleep(20)
+                    }
+
+                }
+            }
+        }
     }
 
     private fun getNavigationBarHeight(context: Context, orientation: Int): Int {
@@ -599,14 +670,14 @@ class MainActivity : AppCompatActivity() {
         var bitmap = screenShot(it.rootView)
 //        println("Before Bitmap size: h ${bitmap.height} w ${bitmap.width}")
 
-        if(resizeForVertical) {
+        if (resizeForVertical) {
             val aspectRatio: Double = bitmap.width.toDouble() / bitmap.height.toDouble()
             // 1080×1350
             val adjustedHeight = 1350
             val adjustedWidth = Math.round((adjustedHeight * aspectRatio)).toInt()
 //            println("Aspect ratio: $aspectRatio width: $adjustedWidth")
             val scalledBitmap = Bitmap.createScaledBitmap(bitmap, adjustedWidth, adjustedHeight, false)
-            bitmap = Bitmap.createBitmap(1080, 1350, Bitmap.Config.ARGB_8888);
+            bitmap = Bitmap.createBitmap(1080, 1350, Bitmap.Config.ARGB_8888)
             val diffOnWidth = 1080 - adjustedWidth
             val offsetToCenterImage = (diffOnWidth / 2).toFloat()
             val comboImage = Canvas(bitmap)
@@ -660,26 +731,27 @@ class MainActivity : AppCompatActivity() {
     private fun saveBitmap(bitmap: Bitmap, fileName: String): File {
         val path: String = Environment.getExternalStorageDirectory().absolutePath
         val dir = File(path)
-        if(!dir.exists()){
+        if (!dir.exists()) {
             dir.mkdirs()
         }
-        val file = File(dir,fileName)
-        try{
+        val file = File(dir, fileName)
+        try {
             var fOut = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100,fOut)
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fOut)
             fOut.flush()
             fOut.close()
-        }catch (e: Exception){
+        } catch (e: Exception) {
             e.printStackTrace()
         }
         return file
     }
-    private fun screenShot(view: View): Bitmap{
-        val heigth = getNavigationBarHeight(context,context.resources.configuration.orientation)
+
+    private fun screenShot(view: View): Bitmap {
+        val heigth = getNavigationBarHeight(context, context.resources.configuration.orientation)
         lateinit var bitmap: Bitmap
-        if(context.resources.configuration.orientation ==  Configuration.ORIENTATION_PORTRAIT) {
+        if (context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
             bitmap = Bitmap.createBitmap(view.width, view.height - heigth, Bitmap.Config.ARGB_8888)
-        }else{
+        } else {
             bitmap = Bitmap.createBitmap(view.width - heigth, view.height, Bitmap.Config.ARGB_8888)
         }
         val canvas = Canvas(bitmap)
@@ -691,6 +763,7 @@ class MainActivity : AppCompatActivity() {
                                                    requestCode: Int) {
         ActivityCompat.requestPermissions(this, permissionsArray, requestCode)
     }
+
     private fun requestWritePermission() {
         // Permission has not been granted and must be requested.
 
@@ -700,7 +773,7 @@ class MainActivity : AppCompatActivity() {
 
             // Permission is not granted
             // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(context as Activity ,
+            if (ActivityCompat.shouldShowRequestPermissionRationale(context as Activity,
                             Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 // Show an explanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
@@ -719,8 +792,7 @@ class MainActivity : AppCompatActivity() {
                         arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
                         MY_PERMISSIONS_REQUEST_WRITE_FILE)
             }
-        }
-        else{
+        } else {
             requestImageResize()
         }
     }
@@ -738,9 +810,9 @@ class MainActivity : AppCompatActivity() {
             }
             val dialog: AlertDialog = alertDialogBuilder.create()
             dialog.show()
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(context,R.color.md_black_1000))
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(context,R.color.md_black_1000))
-        }else{
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(context, R.color.md_black_1000))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(context, R.color.md_black_1000))
+        } else {
             createScreenshotAndSendImage(window.decorView.rootView, false)
         }
     }
@@ -768,22 +840,23 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-        // Add other 'when' lines to check for other
-        // permissions this app might request.
+            // Add other 'when' lines to check for other
+            // permissions this app might request.
             else -> {
                 // Ignore all other requests.
             }
         }
     }
-    fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type ){
-        for(chart in data.chartList){
-            if (chart.type == type){
+
+    fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type, kind: Overlay.Kind = Overlay.Kind.None) {
+        for (chart in data.chartList) {
+            if (chart.type == type && chart.kind == kind) {
                 chart.status = status
             }
         }
-
     }
-    private fun updateCurrentPrices(){
+
+    private fun updateCurrentPrices() {
         try {
             val newPrice = data.dataSource.getCurrentValue(data.coinSelected,
                     data.exchangeSelected,
@@ -800,7 +873,7 @@ class MainActivity : AppCompatActivity() {
                 newUSDPrice = "%.2f".format(newUSDPrice).toFloat()
             }
             tv_usd_value.text = "$" + newUSDPrice.toString()
-        }catch (e: Exception){
+        } catch (e: Exception) {
 
         }
     }
@@ -859,18 +932,17 @@ class MainActivity : AppCompatActivity() {
                 }
                 )
         val imm = this.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        if(this.currentFocus != null)
-            imm.hideSoftInputFromWindow(this.currentFocus.windowToken,0)
+        if (this.currentFocus != null)
+            imm.hideSoftInputFromWindow(this.currentFocus.windowToken, 0)
     }
 
     private fun updateIndicatorTitle() {
-        if (data.runningTA){
+        if (data.runningTA) {
             println("TA Running, making title Loading")
             hideIndicatorsList()
             b_drawer.setImageResource(R.drawable.menu_yellow)
             b_drawer.isClickable = false
-        }
-        else{
+        } else {
             println("TA not running, making  title Indicators")
             b_drawer.setImageResource(R.drawable.menu_white)
             b_drawer.isClickable = true
@@ -905,13 +977,14 @@ class MainActivity : AppCompatActivity() {
 //        }
 //    }
 
-    private fun updateExchangeDueToCoinUpdate() {
-        val exchanges: List<DataSource.Exchange>?
-                = DataSource.data.coins[data.coinSelected.toLowerCase()].let {
+    private fun updateExchangeDueToCoinUpdate(updatePrefs: Boolean = true) {
+        val exchanges: List<DataSource.Exchange> = DataSource.data.coins[data.coinSelected.toLowerCase()].let {
             it?.exchanges?.filter { it.paring.contains(data.currencySelected.toLowerCase()) }
-        }
+        } ?: return
+        if (exchanges.isEmpty())
+            return
         var strListExchanges: ArrayList<String> = ArrayList()
-        for (i in exchanges!!.iterator()) {
+        for (i in exchanges.iterator()) {
             strListExchanges.add(i.exchange.capitalize())
         }
         val strSetExchanges: HashSet<String> = HashSet(strListExchanges)
@@ -920,158 +993,191 @@ class MainActivity : AppCompatActivity() {
         val exchangeAdapter = SimpleArrowDropdownAdapter(this, R.layout.spinner_dropdown_main_view_with_arrow, strListExchanges)
         exchangeAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
 
-        spinner_exchange_type.adapter = exchangeAdapter
+        runOnUiThread {
+            spinner_exchange_type.adapter = exchangeAdapter
+        }
         //reset first selection on Exchange spinner so we dont update the graph 2 times
         spinnerExchangeFirstRun = true
         //Check if previous exchange is still in the list, if not select the first one
-        if(strListExchanges.contains(data.exchangeSelected)) {
-            spinner_exchange_type.setSelection(strListExchanges.indexOf(data.exchangeSelected))
-        }else{
-            spinner_exchange_type.setSelection(0)
-            val editor = data.prefs!!.edit()
-            editor.putString(EXCHANGE_SELETED, strListExchanges[0])
-            editor.apply()
+        if (strListExchanges.contains(data.exchangeSelected)) {
+            runOnUiThread {
+                spinner_exchange_type.setSelection(strListExchanges.indexOf(data.exchangeSelected))
+            }
+        } else {
+            runOnUiThread {
+                spinner_exchange_type.setSelection(0)
+            }
+            if (updatePrefs) {
+                val editor = data.prefs!!.edit()
+                editor.putString(EXCHANGE_SELETED, strListExchanges[0])
+                editor.apply()
+            }
             data.exchangeSelected = strListExchanges[0]
         }
     }
 
     private fun updateCurrentGraphFromWebData(position: Int, coin: String, exchange: String, currency: String, forceUpdate: Boolean) {
         println("Attempting  to update graph, Pos:$position, Coin:$coin, exchange:$exchange, Currency:$currency, forceUpdate:$forceUpdate")
-        swipe_to_refresh_layout.isRefreshing = true
-        updateCurrentPrices()
+
         AsyncTask.execute {
-            println("Task running")
-            runOnUiThread {
-                spinner_coin_type.isEnabled = false
-                spinner_exchange_type.isEnabled = false
-                spinner_time_period.isEnabled = false
-            }
-            if (data.all_ta[position].candlestickData.size == 0 || forceUpdate) {
-                runOnUiThread {
-                    updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART)
-        //                    data.chartList[0] = ChartStatusData(ChartStatusData.Status.LOADING,ChartStatusData.Type.MAIN_CHART)
-                    for(overlay in OverlayAdapter.data.list){
-                        if((overlay.kind == Overlay.Kind.Volume_Bars )and overlay.selected){
-                            updateChartStatus(ChartStatusData.Status.LOADING, overlay.chartType)
-                        }
-                    }
-                    all_charts_recycler_view.adapter.notifyDataSetChanged()
+            executeGraphUpdate(position, coin, exchange, currency, forceUpdate)
+        }
+    }
+
+    private fun executeGraphUpdate(
+            position: Int,
+            coin: String,
+            exchange: String,
+            currency: String,
+            forceUpdate: Boolean,
+            runTA: Boolean = true
+    ) {
+        runOnUiThread {
+            swipe_to_refresh_layout.isRefreshing = true
+            updateCurrentPrices()
+        }
+        println("Task running")
+        runOnUiThread {
+            spinner_coin_type.isEnabled = false
+            spinner_exchange_type.isEnabled = false
+            spinner_time_period.isEnabled = false
+        }
+        if (data.all_ta[position].getCandlestickData(Overlay.Kind.CandleStick).size == 0 || forceUpdate) {
+            updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None)
+            //                    data.chartList[0] = ChartStatusData(ChartStatusData.Status.LOADING,ChartStatusData.Type.MAIN_CHART)
+            for (overlay in OverlayAdapter.data.list) {
+                if (overlay.separateChart and overlay.selected) {
+                    updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                 }
+            }
+            runOnUiThread {
+                if (all_charts_recycler_view.adapter != null)
+                    all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+
                 //Reset legends
-                for((key,chart) in ChartListAdapter.data.charts){
+                for ((key, chart) in ChartListAdapter.data.charts) {
                     chart as CombinedChart
                     chart.xAxis.limitLines.removeAll(chart.xAxis.limitLines)
                     chart.legend.resetCustom()
                 }
+            }
 
 
-                val interval = DataSource.Interval.values()[position]
-                println("Getting data from web")
-                val ticks = data.dataSource.getData(coin, exchange,currency, interval)
-                Log.d("DEBUG","Finished getting data")
-                if(ticks.size < 10){
-                    runOnUiThread {
-                        updateChartStatus(ChartStatusData.Status.UPDATE_FAILED, ChartStatusData.Type.MAIN_CHART)
-                        for(overlay in OverlayAdapter.data.list){
-                            if(overlay.separateChart and overlay.selected){
-                                updateChartStatus(ChartStatusData.Status.UPDATE_FAILED, overlay.chartType)
-                            }
+            val interval = DataSource.Interval.values()[position]
+            println("Getting data from web")
+            val ticks = data.dataSource.getData(coin, exchange, currency, interval)
+            Log.d("DEBUG", "Finished getting data")
+            if (ticks.size < 10) {
+                runOnUiThread {
+                    updateChartStatus(ChartStatusData.Status.UPDATE_FAILED, ChartStatusData.Type.MAIN_CHART)
+                    for (overlay in OverlayAdapter.data.list) {
+                        if (overlay.separateChart and overlay.selected) {
+                            updateChartStatus(ChartStatusData.Status.UPDATE_FAILED, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                         }
-
-                        all_charts_recycler_view.adapter.notifyDataSetChanged()
-
-                        b_drawer.setImageResource(R.drawable.menu_red)
-                        b_drawer.isClickable = false
-
-                        swipe_to_refresh_layout.isRefreshing = false
-                        spinner_coin_type.isEnabled = true
-                        spinner_exchange_type.isEnabled = true
-                        spinner_time_period.isEnabled = true
                     }
+                    if (all_charts_recycler_view.adapter != null)
+                        all_charts_recycler_view.adapter!!.notifyDataSetChanged()
 
+                    b_drawer.setImageResource(R.drawable.menu_red)
+                    b_drawer.isClickable = false
 
-                    return@execute
+                    swipe_to_refresh_layout.isRefreshing = false
+                    spinner_coin_type.isEnabled = true
+                    spinner_exchange_type.isEnabled = true
+                    spinner_time_period.isEnabled = true
                 }
-                else {
-                    println("Doing TA $position")
-                    data.runningTA = true
-                    data.all_ta[position].clearAll()
-                    data.all_ta[position].updateCandlestickData(ticks,addTimeSeriesData = true)
 
-                    runOnUiThread {
-                        updateChartStatus(ChartStatusData.Status.UPDATE_CANDLESTICKS, ChartStatusData.Type.MAIN_CHART)
-                        for(overlay in OverlayAdapter.data.list){
-                            if(overlay.separateChart and overlay.selected){
-                                updateChartStatus(ChartStatusData.Status.INITIAL_LOAD, overlay.chartType)
-                            }
-                        }
-                        all_charts_recycler_view.adapter.notifyDataSetChanged()
+
+                return
+            } else {
+                println("Doing TA $position")
+                data.runningTA = true
+                data.all_ta[position].clearAll()
+                data.all_ta[position].updateCandlestickData(ticks, addTimeSeriesData = true)
+
+
+                updateChartStatus(ChartStatusData.Status.UPDATE_CANDLESTICKS, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None)
+                for (overlay in OverlayAdapter.data.list) {
+                    if (overlay.separateChart and overlay.selected) {
+                        updateChartStatus(ChartStatusData.Status.INITIAL_LOAD, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                     }
+                }
+                if (all_charts_recycler_view.adapter != null)
+                    runOnUiThread {
+                        all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+                    }
+                runOnUiThread {
                     //Reset legends
-                    for((key,chart) in ChartListAdapter.data.charts){
+                    for ((key, chart) in ChartListAdapter.data.charts) {
                         chart as CombinedChart
                         chart.xAxis.limitLines.removeAll(chart.xAxis.limitLines)
                         chart.legend.resetCustom()
                     }
-
-                    //Disabling because it looks redundant
-                    runOnUiThread( {updateIndicatorTitle()})
-                    data.all_ta[position] = TechnicalAnalysis(ticks)
-                    data.endTA = false
-
-                    data.runningTA = false
-                    println("TA Finished")
-                    runOnUiThread {
-                        updateIndicatorTitle()
-                    }
                 }
-            }
 
+                //Disabling because it looks redundant
+                runOnUiThread { updateIndicatorTitle() }
+                if (runTA) {
+                    data.all_ta[position] = TechnicalAnalysis(ticks,
+                            TechnicalAnalysis.TAData(data.all_ta[position].getCandlestickData(Overlay.Kind.CandleStick),
+                                    Overlay.Kind.CandleStick))
+                }
+                data.endTA = false
 
-            runOnUiThread {
-                println("TA Done, time to update recycler")
+                data.runningTA = false
+                println("TA Finished")
                 runOnUiThread {
                     updateIndicatorTitle()
                 }
-                println("{updatedGraph} Chart list size: " + data.chartList.size)
-                updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
-                // Update when Ich Cloud is up. Be smart and only do when needed because this takes processing power
-                if(data.all_ta[position].isIchCloudSelected()) {
-                    data.all_ta[position].updateIndividualChartData()
-                }
-                for(overlay in OverlayAdapter.data.list){
-                    if(overlay.separateChart and overlay.selected){
-                        updateChartStatus(ChartStatusData.Status.UPDATE_CHART, overlay.chartType)
-                    }
-                }
-                all_charts_recycler_view.adapter.notifyDataSetChanged()
-
-                spinner_coin_type.isEnabled = true
-                spinner_exchange_type.isEnabled = true
-                spinner_time_period.isEnabled = true
-                swipe_to_refresh_layout.isRefreshing = false
             }
+        }
 
 
+        runOnUiThread {
+            println("TA Done, time to update recycler")
+            updateIndicatorTitle()
+        }
+
+        println("{updatedGraph} Chart list size: " + data.chartList.size)
+        updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
+        // Update when Ich Cloud is up. Be smart and only do when needed because this takes processing power
+        if (data.all_ta[position].isIchCloudSelected()) {
+            data.all_ta[position].updateIndividualChartData()
+        }
+        for (overlay in OverlayAdapter.data.list) {
+            if (overlay.separateChart and overlay.selected) {
+                updateChartStatus(ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
+            }
+        }
+
+        runOnUiThread {
+            if (all_charts_recycler_view.adapter != null)
+                all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+
+            spinner_coin_type.isEnabled = true
+            spinner_exchange_type.isEnabled = true
+            spinner_time_period.isEnabled = true
+            swipe_to_refresh_layout.isRefreshing = false
         }
     }
-    fun isInternetOn(): Boolean {
+
+    private fun isInternetOn(): Boolean {
 
         // get Connectivity Manager object to check connection
         val connec: ConnectivityManager =
-         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager;
+                getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         // Check for network connections
-        if (connec.activeNetworkInfo != null &&(
-                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.CONNECTED ||
-                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.CONNECTING )) {
-            return true;
+        if (connec.activeNetworkInfo != null && (
+                        connec.activeNetworkInfo.state == android.net.NetworkInfo.State.CONNECTED ||
+                                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.CONNECTING)) {
+            return true
 
         } else if (connec.activeNetworkInfo != null &&
-                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.DISCONNECTED ) {
-            return false;
+                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.DISCONNECTED) {
+            return false
         }
-        return false;
+        return false
     }
 
 }

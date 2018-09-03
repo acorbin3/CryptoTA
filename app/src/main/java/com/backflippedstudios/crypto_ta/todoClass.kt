@@ -6,28 +6,28 @@ package com.backflippedstudios.crypto_ta
 class todoClass {
 
 
-    //Done 8/3/2018 - Add cloud messaging or push messaging
-    // DONE 8/4/2018(Didnt implement due to FireBase console limitations) - Filter out could message if they have the latest version
-    //  TODO - Add settings so that someone can turn off messaging
 
-    //TODO - ISSUE = when reloading app, it selects the correct first coin but always picks the first one in the list,so the 2nd coin could be incorrect.
 
-    //TODO - Check crashes from crashanalitics
-    //TODO - ISSUE = Crash when slecting coins with multiple slashes
+
+    // TODO: computed, then go ahead and recalculate ones that have not been selected.
+
+    //TODO: Look into possibly simplifying seperate charts
+
+
+    //TODO: Indicators I am interested in adding -
+
+    //      TODO: Pivot Points, Aroon, Awesome Oscillator, Chande Momentum Oscillator,
+    //      TODO: Coppock Curve, Detrend Price Oscillator, Fisher Transform, Hull Moving Average,
+    //      TODO: Trailing Stop Loss, Triple EMA, Williams %R.
 
     //TODO - Add splash screen with loading
-
-    //TODO      Have service to daily look at cryptowatch's assets to update the firebase DB
 
     //TODO - feedback button
 
     // Release 2
     //TODO - Look into moving legend to bottom left??
 
-    //TODO-LOW: Indicators I am interested in adding -
-    //      TODO: Pivot Points, Aroon, Awesome Oscillator, Chande Momentum Oscillator,
-    //      TODO: Coppock Curve, Detrend Price Oscillator, Fisher Transform, Hull Moving Average,
-    //      TODO: Trailing Stop Loss, Triple EMA, Williams %R.
+
 
 
     //TODO-4: add tabs
@@ -38,6 +38,39 @@ class todoClass {
     //      1. Support having 1 handed UX, could mean haveing multiple xmls
 
     //TODO - Look at CPU usages on cryptowatch api
+
+
+    // 1.3.1
+    //8/22/2018: Testing - Fix regression testing
+
+    // DONE 8/24/2018- simplify the chartlist adapter legedon and adding lines
+    //DONE 8/24/2018 - Check if simplification has color change issues?
+
+
+    //8/24/2018 - ISsue for horizontal screen
+    //DONE 8/25/2018 - the last seperate chat is not filled in the screen
+// DONE 8/25/2018 - Issue on Stoch Osci when adding Ich cloud, the graph doesnt get shifted
+    //      DONE 8/25/2018: PPO
+
+    //1.3
+    //      DONE 8/14/2018: DetrendStocastic Oscillator Price Oscliator
+    //      DONE 8/14/2018:  D & K
+    //DONE 8/20/2018- only calculate overlay that is selected. Then once all selected have been
+    //DONE 8/20/2018 - Fix the candlesicks that go away after overlays get loaded
+
+    //1.2.2
+    //DONE 8/10/2018: RSI Indicator
+    // DONE: 8/11/2018 Fix issues with scrolling, and click indicator
+
+    //Done 8/3/2018 - Add cloud messaging or push messaging
+    // DONE 8/4/2018(Didnt implement due to FireBase console limitations) - Filter out could message if they have the latest version
+    //  Done 8/4/2018 - Add settings so that someone can turn off messaging
+
+    //DONE 8/5/2018 - ISSUE = when reloading app, it selects the correct first coin but always picks the first one in the list,so the 2nd coin could be incorrect.
+    //DONE 8/5/2018  - ISSUE = Crash when slecting coins with multiple slashes
+    //DONE 8/7/2018 - regression testing - Looping over all the coins to just make sure they load
+    //DONE 8/7/2018 - Check crashes from crashanalitics
+    //DONE 8/8/2018      Have service to daily look at cryptowatch's assets to update the firebase DB
 
     // Done 8/1/2018 - save off all the coin pair data so loading doesnt take a long time each start up
     // Done 8/1/2018     Insead of looking at cryptowatch api, look at firebase DB for info..
