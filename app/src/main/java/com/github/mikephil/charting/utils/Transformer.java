@@ -107,7 +107,12 @@ public class Transformer {
 
         for (int j = 0; j < count; j += 2) {
 
-            Entry e = data.getEntryForIndex(j / 2 + from);
+            Entry e;
+            try {
+                e = data.getEntryForIndex(j / 2 + from);
+            }catch (Exception ex){
+                continue;
+            }
 
             if (e != null) {
                 valuePoints[j] = e.getX();

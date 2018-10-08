@@ -55,6 +55,9 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                 for (x in currentStartIndex + 1..currentEndIndex) {
 
                     currentEntry = dataSet.getEntryForIndex(x)
+                    if(x >= boundaryEntry.size){
+                        break
+                    }
                     if(boundaryEntry[x].y >= currentEntry.y) {
                         if(!goodStart){
 //                            println("Start looking for good points. currentStartIndex=$currentStartIndex")
@@ -107,6 +110,9 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                 var slopeMainline = getSlope(mainlinePrevious, mainlineCurrent)
                 var yInterceptMainline = getYIntercept(mainlineCurrent, slopeMainline)
                 //get slope of boundary entry
+                if(currentEndIndex> boundaryEntry.size){
+                    continue
+                }
                 var boundaryCurrent = boundaryEntry[currentEndIndex]
                 var boundaryPrevious = boundaryEntry[currentEndIndex-1]
                 var slopeBoundary = getSlope(boundaryPrevious, boundaryCurrent)

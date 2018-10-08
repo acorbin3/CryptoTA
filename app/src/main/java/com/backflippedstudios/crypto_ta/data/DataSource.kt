@@ -1,5 +1,6 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.data
 
+import android.content.Context
 import android.util.JsonReader
 import android.util.JsonToken
 import com.google.android.gms.tasks.Task
@@ -19,6 +20,8 @@ import kotlin.collections.HashMap
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.Source
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 
 
 /**
@@ -41,12 +44,26 @@ class DataSource {
         _3DAY(60*60*24*3),
         _1WEEK(60*60*24*7)
     }
-    data class Exchange(val exchange: String, val paring: String, val active: Boolean, val url: String)
-    data class Asset(val id: Int, val symbol: String, val name: String, val FiatLegalTender: Boolean, val url: String){
-        var exchanges: ArrayList<Exchange> = ArrayList()
-    }
+    data class Exchange(
+            @SerializedName("exchange") val exchange: String,
+            @SerializedName("paring") val paring: String,
+            @SerializedName("active") val active: Boolean,
+            @SerializedName("url") val url: String
+    )
+    data class Asset(
+            @SerializedName("id") val id: Int,
+            @SerializedName("symboal") val symbol: String,
+            @SerializedName("name") val name: String,
+            @SerializedName("legal_tender") val FiatLegalTender: Boolean,
+            @SerializedName("url") val url: String,
+            @SerializedName("exchanges") var exchanges: ArrayList<Exchange> = ArrayList()
+    )
+
+    private lateinit var mDbWorkerThread: DbWorkerThread
+    private var mDB: AssetDataBase? = null
+
     object data{
-        var coins: HashMap<String,Asset> = HashMap()
+        var coins: HashMap<String, Asset> = HashMap()
         var db = FirebaseFirestore.getInstance()
     }
 
@@ -365,8 +382,6 @@ class DataSource {
         }
     }
 
-
-    //TODO add function to get all coin pairs
     fun initCoinsV2(){
         var url = URL("https://api.cryptowat.ch/assets")
         try {
@@ -412,9 +427,35 @@ class DataSource {
         }
     }
 
-    fun intCoins3(): Task<QuerySnapshot> {
+    fun getDAOItemCount(context: Context): Int{
+        mDB = AssetDataBase.getInstance(context = context)
+        return mDB?.assetDataDao()?.count().toString().toInt()
+    }
+
+    fun loadFromDAO(context: Context){
+        mDB = AssetDataBase.getInstance(context = context)
+        println("Coins are the same, loading from DAO")
+        if(mDB?.assetDataDao()?.getAll() != null) {
+            for (item in mDB?.assetDataDao()?.getAll()?.iterator()!!) {
+                var asset: DataSource.Asset = Gson().fromJson(item.asset, DataSource.Asset::class.java)
+                data.coins[asset.symbol] = asset
+            }
+        }
+    }
+    fun clearDAO(context: Context){
+        mDB = AssetDataBase.getInstance(context = context)
+        mDB?.assetDataDao()?.deleteALL()
+    }
+
+    fun getFirestoreItemCount(context: Context): Task<QuerySnapshot> {
+        return data.db.collection("assetCount").get()
+    }
+
+    fun intCoins3(context: Context): Task<QuerySnapshot> {
+        mDB = AssetDataBase.getInstance(context = context)
         return data.db.collection("coinpairs").get(Source.DEFAULT)
                 .addOnSuccessListener {
+                    println("Updating data coins from FirebStore")
                     it.forEach {
                         data.coins[it.data["s"].toString()] = Asset(it.data["id"].toString().toInt(),
                                 it.data["s"].toString(),
@@ -431,6 +472,10 @@ class DataSource {
                                                     + item["p"].toString()
                                     ))
                         }
+                        // load DAO
+                        var assetData = AssetData()
+                        assetData.asset = Gson().toJson(data.coins[it.data["s"].toString()])
+                        mDB?.assetDataDao()?.insert(assetData)
                     }
                 }
     }
