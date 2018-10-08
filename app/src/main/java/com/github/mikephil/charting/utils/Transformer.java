@@ -49,8 +49,8 @@ public class Transformer {
      */
     public void prepareMatrixValuePx(float xChartMin, float deltaX, float deltaY, float yChartMin) {
 
-        float scaleX = (float) ((mViewPortHandler.contentWidth()) / deltaX);
-        float scaleY = (float) ((mViewPortHandler.contentHeight()) / deltaY);
+        float scaleX = (mViewPortHandler.contentWidth()) / deltaX;
+        float scaleY = (mViewPortHandler.contentHeight()) / deltaY;
 
         if (Float.isInfinite(scaleX)) {
             scaleX = 0;
@@ -107,7 +107,12 @@ public class Transformer {
 
         for (int j = 0; j < count; j += 2) {
 
-            Entry e = data.getEntryForIndex(j / 2 + from);
+            Entry e;
+            try {
+                e = data.getEntryForIndex(j / 2 + from);
+            }catch (Exception ex){
+                continue;
+            }
 
             if (e != null) {
                 valuePoints[j] = e.getX();
@@ -178,6 +183,11 @@ public class Transformer {
             valuePointsForGenerateTransformedValuesLine = new float[count];
         }
         float[] valuePoints = valuePointsForGenerateTransformedValuesLine;
+
+        //AC - This is to prevent out of bounds exception on data.getEntryForIndex below
+        if(data.getEntryCount() == 0){
+            return valuePoints;
+        }
 
         for (int j = 0; j < count; j += 2) {
 

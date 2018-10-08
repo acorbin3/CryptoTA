@@ -30,19 +30,21 @@ class ChartStyle(context: Context) {
     fun updateCandlestickGraph(ta: TechnicalAnalysis,mChart: CombinedChart?){
         val combinedData = CombinedData()
         //Do candlestick data
-        val candleDataSet = CandleDataSet(ta.candlestickData, "Candlestick Data Set")
+        val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick), "Candlestick Data Set")
         updateCandleDataFormat(candleDataSet)
         candleDataSet.axisDependency = YAxis.AxisDependency.RIGHT
 
-        combinedData.setData(CandleData(candleDataSet))
-        mChart?.let {
-            //            CombinedChartRenderer
-            it.data  = combinedData
-            chartDefaults(it)
-            it.fitScreen()
-            it.zoom(5F,0F,it.data.xMax,0F) //This helps with the initial zoom
-            it.moveViewToX(it.data.xMax) // This moves graph to the all the way to the right
-            it.invalidate()
+        if(candleDataSet.values.isNotEmpty()) {
+            combinedData.setData(CandleData(candleDataSet))
+            mChart?.let {
+                //            CombinedChartRenderer
+                it.data = combinedData
+                chartDefaults(it)
+                it.fitScreen()
+                it.zoom(5F, 0F, it.data.xMax, 0F) //This helps with the initial zoom
+                it.moveViewToX(it.data.xMax) // This moves graph to the all the way to the right
+                it.invalidate()
+            }
         }
     }
 
@@ -53,12 +55,16 @@ class ChartStyle(context: Context) {
         it.legend.orientation = Legend.LegendOrientation.VERTICAL
         it.legend.xOffset = 20F
         it.legend.form = Legend.LegendForm.CIRCLE
-        it.legend.textSize = 9F
+        it.legend.textSize = 11F
+        it.legend.isWordWrapEnabled = true
+        it.legend.resetCustom()
         it.setDrawBorders(true)
         it.setBorderColor(ContextCompat.getColor(context, R.color.md_grey_600))
         it.axisRight.textColor = Color.WHITE
         it.legend.textColor = Color.WHITE
         it.isAutoScaleMinMaxEnabled = true
+
+
 
         // xAxis properties
         // The philosophy of the xAxis will be the only the main graph
@@ -79,65 +85,19 @@ class ChartStyle(context: Context) {
         it.axisRight.yOffset =7F
     }
 
-    private fun lineChartDefaults(it: LineChart){
-        it.legend.setDrawInside(true)
-        it.legend.verticalAlignment = Legend.LegendVerticalAlignment.TOP
-        it.legend.horizontalAlignment = Legend.LegendHorizontalAlignment.LEFT
-        it.legend.orientation = Legend.LegendOrientation.VERTICAL
-        it.legend.xOffset = 20F
-        it.legend.form = Legend.LegendForm.CIRCLE
-        it.legend.textSize = 9F
-        it.legend.textColor = Color.WHITE
-        it.setDrawBorders(true)
-        it.setBorderColor(ContextCompat.getColor(context, R.color.md_grey_600))
-        it.viewPortHandler?.zoom(5F,5F)
-        it.axisRight.textColor = Color.WHITE
-        it.legend.isEnabled = true
-
-        it.isAutoScaleMinMaxEnabled = true
-
-        it.xAxis.setDrawLabels(false)
-
-        it.axisLeft.isEnabled = false
-        it.isHighlightPerTapEnabled = true
-        it.description.isEnabled = false
-        it.axisRight.yOffset =7F
-        it.axisRight.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
-        it.axisRight.labelCount = 3
-//        it.axisRight.isEnabled = false
-    }
-
-    private fun barchartDefaults(it: BarChart){
-        it.setDrawBorders(true)
-        it.setBorderColor(ContextCompat.getColor(context, R.color.md_grey_600))
-        it.viewPortHandler?.zoom(5F,5F)
-        it.axisRight.textColor = Color.WHITE
-        it.legend.isEnabled = false
-
-        it.isAutoScaleMinMaxEnabled = true
-
-        it.xAxis.setDrawLabels(false)
-
-        it.axisLeft.isEnabled = false
-        it.isHighlightPerTapEnabled = true
-        it.description.isEnabled = false
-        it.axisRight.yOffset =7F
-        it.axisRight.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
-        it.axisRight.labelCount = 3
-//        it.axisRight.isEnabled = false
-    }
-
     fun updateOverlays(overlays: ArrayList<Overlay>, ta: TechnicalAnalysis, mChart: CombinedChart?){
         val combinedData = CombinedData()
         val allScatter_Data = ArrayList<IScatterDataSet>()
 
         //Do candlestick data
-        if(ta.candlestickData.size > 0) {
-            val candleDataSet = CandleDataSet(ta.candlestickData, "Candlestick Data Set")
+        if(ta.getCandlestickData(Overlay.Kind.CandleStick).size > 0) {
+            val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick), "Candlestick Data Set")
             updateCandleDataFormat(candleDataSet)
 
             candleDataSet.axisDependency = YAxis.AxisDependency.RIGHT
-            combinedData.setData(CandleData(candleDataSet))
+            if(candleDataSet.values.isNotEmpty()) {
+                combinedData.setData(CandleData(candleDataSet))
+            }
         }
 
         //Create chart data for all overlays that are selected and then refresh the chart
@@ -146,11 +106,16 @@ class ChartStyle(context: Context) {
         for (overlay in overlays){
             if (overlay.selected && !overlay.separateChart) {
                 var list = ta.getData(overlay.kind)
+                if(list.isEmpty()){
+                    continue
+                }
                 if(overlay.kind != Overlay.Kind.Ichimoku_Cloud) {
                     for (i in list.indices) {
                         when (overlay.allIndicatorInfo[i].type) {
                             Overlay.IndicatorType.Line -> {
-                                AddOneLine(list[i], overlay.allIndicatorInfo[i].label, overlay.allIndicatorInfo[i].color, allLine_Data)
+                                if(!list[i].isEmpty()) {
+                                    AddOneLine(list[i], overlay.allIndicatorInfo[i].label, overlay.allIndicatorInfo[i].color, allLine_Data)
+                                }
                             }
                             Overlay.IndicatorType.Scatter -> {
                                 val scatterDataSet = ScatterDataSet(list[i], overlay.allIndicatorInfo[i].label)
@@ -159,7 +124,9 @@ class ChartStyle(context: Context) {
                                 scatterDataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE)
                                 scatterDataSet.scatterShapeSize = 8F
                                 scatterDataSet.axisDependency = YAxis.AxisDependency.RIGHT
-                                allScatter_Data.add(scatterDataSet)
+                                if(scatterDataSet.values.isNotEmpty()) {
+                                    allScatter_Data.add(scatterDataSet)
+                                }
                             }
                         }
 
@@ -191,22 +158,34 @@ class ChartStyle(context: Context) {
                         AddOneLine(list[2], overlay.allIndicatorInfo[2].label, overlay.allIndicatorInfo[2].color, allLine_Data)
                         AddOneLine(list[3], overlay.allIndicatorInfo[3].label, overlay.allIndicatorInfo[3].color, allLine_Data)
                         AddOneLine(list[4], overlay.allIndicatorInfo[4].label, overlay.allIndicatorInfo[4].color, allLine_Data)
-                        allLine_Data.add(lineDataSet)
-                        allLine_Data.add(lineDataSet2)
+                        if(lineDataSet.values.isNotEmpty()) {
+                            allLine_Data.add(lineDataSet)
+                        }
+                        if(lineDataSet2.values.isNotEmpty()) {
+                            allLine_Data.add(lineDataSet2)
+                        }
 
                     }
                 }
             }
 
-            combinedData.setData(LineData(allLine_Data))
-            combinedData.setData(ScatterData(allScatter_Data))
+            if(!allLine_Data.isEmpty()) {
+                combinedData.setData(LineData(allLine_Data))
+            }
+            if(!allScatter_Data.isEmpty()) {
+                combinedData.setData(ScatterData(allScatter_Data))
+            }
 
         }
 
-        mChart?.let {
-            it.data  = combinedData
-            chartDefaults(it)
-            it.invalidate()
+        if(combinedData.allData.size > 0) {
+            mChart?.let {
+                it.data = combinedData
+                chartDefaults(it)
+                it.fitScreen()
+                it.zoom(5F,0F,it.data.xMax,0F)
+                it.invalidate()
+            }
         }
     }
 
@@ -231,44 +210,52 @@ class ChartStyle(context: Context) {
             AddOneLine(lineGraphStyle.lineData,lineGraphStyle.lineStyle,allLineData)
         }
 
-        combinedData.setData(LineData(allLineData))
-        mChart?.let{
-            it.data = combinedData
-            chartDefaults(it,false)
-            if(moveViewToEnd){
+        if(allLineData.isNotEmpty()) {
+            combinedData.setData(LineData(allLineData))
+            mChart?.let{
+                it.data = combinedData
+                chartDefaults(it,false)
                 it.fitScreen()
                 it.zoom(5F,0F,it.data.xMax,0F)
-                it.moveViewToX(it.data.xMax)
+                if(moveViewToEnd){
+                    it.moveViewToX(it.data.xMax)
+                }
+                it.invalidate()
             }
-            it.invalidate()
+        }else{
+            mChart?.let{
+                chartDefaults(it,false)
+                it.fitScreen()
+                it.invalidate()
+            }
         }
-
     }
     fun updateVolumeGraph(ta: TechnicalAnalysis,mChart: CombinedChart?, moveViewToEnd: Boolean = false){
         val allBar_Data = ArrayList<IBarDataSet>()
-        val barDataSet = VolumeBarDataSet(ta.volumeBarData,"Volume")
+        val barDataSet = VolumeBarDataSet(ta.data[Overlay.Kind.Volume_Bars]?.data as ArrayList<BarEntry>,"Volume")
         val combinedData = CombinedData()
         barDataSet.setColors(
                 ContextCompat.getColor(context, R.color.md_red_500),
                 ContextCompat.getColor(context, R.color.md_green_500),
                 ContextCompat.getColor(context, R.color.md_blue_400)
         )
-        println("Vol Bar data size: ${ta.volumeBarData.size}")
+        println("Vol Bar data size: ${ta.data[Overlay.Kind.Volume_Bars]?.data?.size}")
         barDataSet.axisDependency = YAxis.AxisDependency.RIGHT
         barDataSet.setDrawValues(false)
         println("Sizie of bar dataset: ${barDataSet.stackSize}")
-        allBar_Data.add(barDataSet)
-        combinedData.setData(BarData(allBar_Data))
-        mChart?.let {
-            it.data  = combinedData
-            chartDefaults(it,false)
-            if (moveViewToEnd) {
-
+        if(barDataSet.values.isNotEmpty()) {
+            allBar_Data.add(barDataSet)
+            combinedData.setData(BarData(allBar_Data))
+            mChart?.let {
+                it.data = combinedData
+                chartDefaults(it, false)
                 it.fitScreen()
-                it.zoom(5F,0F,it.data.xMax,0F)
-                it.moveViewToX(it.data.xMax) // This moves graph to the all the way to the right
+                it.zoom(5F, 0F, it.data.xMax, 0F)
+                if (moveViewToEnd) {
+                    it.moveViewToX(it.data.xMax) // This moves graph to the all the way to the right
+                }
+                it.invalidate()
             }
-            it.invalidate()
         }
     }
     private fun updateCandleDataFormat(candleDataSet: CandleDataSet) {
@@ -284,6 +271,9 @@ class ChartStyle(context: Context) {
         candleDataSet.neutralColor = ContextCompat.getColor(context, R.color.md_blue_400)
         candleDataSet.barSpace = .25F
         candleDataSet.setDrawValues(false)
+//        candleDataSet.setValueTextColor(ContextCompat.getColor(context, R.color.md_white_1000))
+//        candleDataSet.isHighlightEnabled = true
+//        candleDataSet.highLightColor = ContextCompat.getColor(context, R.color.md_white_1000)
     }
 
     private fun AddOneLine(ticks: ArrayList<Entry>, label: String, color: Int, lineData: ArrayList<ILineDataSet>){
@@ -293,23 +283,31 @@ class ChartStyle(context: Context) {
         lineDataSet.setDrawCircleHole(false)
         lineDataSet.color = color
         lineDataSet.axisDependency = YAxis.AxisDependency.RIGHT
-        lineData.add(lineDataSet)
+        if(lineDataSet.values.isNotEmpty()) {
+            lineData.add(lineDataSet)
+        }
     }
     private fun AddOneLine(ticks: ArrayList<Entry>, lineStyle: LineStyle , lineData: ArrayList<ILineDataSet>){
-        val lineDataSet = LineDataSet(ticks,lineStyle.lineLabel)
-        lineDataSet.valueTextSize = lineStyle.textSize
-        lineDataSet.valueTextColor = lineStyle.textColor
-        lineDataSet.isHighlightEnabled = true
+        try {
+            val lineDataSet = LineDataSet(ticks, lineStyle.lineLabel)
+
+            lineDataSet.valueTextSize = lineStyle.textSize
+            lineDataSet.valueTextColor = lineStyle.textColor
+            lineDataSet.isHighlightEnabled = true
 //        lineDataSet.setDrawHighlightIndicators(true)
 //        lineDataSet.highLightColor = color
-        lineDataSet.setDrawValues(lineStyle.drawValues)
-        lineDataSet.setDrawIcons(false)
-        lineDataSet.setDrawCircles(false)
-        lineDataSet.setDrawCircleHole(false)
-        lineDataSet.setDrawFilled(lineStyle.filled)
-        lineDataSet.fillColor = lineStyle.filledColor
-        lineDataSet.color = lineStyle.lineColor
-        lineDataSet.axisDependency = lineStyle.axisDependency
-        lineData.add(lineDataSet)
+            lineDataSet.setDrawValues(lineStyle.drawValues)
+            lineDataSet.setDrawIcons(false)
+            lineDataSet.setDrawCircles(false)
+            lineDataSet.setDrawCircleHole(false)
+            lineDataSet.setDrawFilled(lineStyle.filled)
+            lineDataSet.fillColor = lineStyle.filledColor
+            lineDataSet.color = lineStyle.lineColor
+            lineDataSet.axisDependency = lineStyle.axisDependency
+            if (lineDataSet.values.isNotEmpty()) {
+                lineData.add(lineDataSet)
+            }
+        } catch (e: Exception) {
+        }
     }
 }

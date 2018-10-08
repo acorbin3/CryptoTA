@@ -4,6 +4,7 @@
     <string name="indicator_drawer_button">indicator drawer button</string>
     <string name="live_coin">Live Coin</string>
     <string name="used_to_remove_overlays_tray">used to remove overlays tray</string>
+    <string name="facebook_app_id">201350363860676</string>
     <string-array name="time_periods">
         <item>1M</item>
         <item>3M</item>

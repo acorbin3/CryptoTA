@@ -5,22 +5,148 @@ package com.backflippedstudios.crypto_ta
  */
 class todoClass {
 
-    //TODO - error, when flipping screen, adds extra volumn graph
-    //TODO: Update overlays to version 2.0:
+
+    //DONE - Add warning that indicator cant be added becuase too many charts
+    //DONE 9/30/2018 - Awesome Oscillator
+    //DONE 9/30/2018 - Rate Of Change
+
+    //DONE 10/2/2018 - Fix simplification on Ich Cloud for seperate charts, Coppock Curve, Chande Momentum Oscillator,
+    //DONE 10/3/2018 - Williams R, Tripple EMA, Ulser Index
+
+    //DONE 10/4/2018 - Bug - Why does when changing the values like timeFrame not work?
+    //DONE 10/8/2018 - BUG - When changing exchanges, the overlays do not appear
+
+    //TODO: Indicators I am interested in adding -
+    //      TODO: Pivot Points, ,
+    //      TODO: , Fisher Transform,
+    //      TODO: Trailing Stop Loss
+
+
+    //TODO - Add splash screen with loading
+
+    //TODO - feedback button
+
+    // Release 2
+
+    //TODO-4: add tabs
+    //          TODO: Tab for cards comparing daily changes kinda like main cryptowat.ch
+    //          https://api.cryptowat.ch/markets/EXCHANGE/COIN_PAIR/summary
+
+    //TODO - Custom settings
+    //      1. Support having 1 handed UX, could mean haveing multiple xmls
+
+    //TODO - Look at CPU usages on cryptowatch api
+    //TODO - Look into moving legend to bottom left??
+
+
+    // 1.3.2-1.3.7
+    // DONE 9/18/2018: Made initial loading faster by storing the coins locally
+    //DONE: Look into possibly simplifying seperate charts
+
+    // DONE 9/20/2018: computed, then go ahead and recalculate ones that have not been selected.
+    // DONE : Detrend Price Oscillator
+    // DONE 9/20/2018 - Hull Moving Average
+    // DONE  - ZLEMA
+    // DONE - Volume Weighted Average Price
+    // DONE 9/27/2018 - Moving volume weighted average price
+
+    // 1.3.1
+    //8/22/2018: Testing - Fix regression testing
+
+    // DONE 8/24/2018- simplify the chartlist adapter legedon and adding lines
+    //DONE 8/24/2018 - Check if simplification has color change issues?
+
+
+    //8/24/2018 - ISsue for horizontal screen
+    //DONE 8/25/2018 - the last seperate chat is not filled in the screen
+// DONE 8/25/2018 - Issue on Stoch Osci when adding Ich cloud, the graph doesnt get shifted
+    //      DONE 8/25/2018: PPO
+
+    //1.3
+    //      DONE 8/14/2018: DetrendStocastic Oscillator Price Oscliator
+    //      DONE 8/14/2018:  D & K
+    //DONE 8/20/2018- only calculate overlay that is selected. Then once all selected have been
+    //DONE 8/20/2018 - Fix the candlesicks that go away after overlays get loaded
+
+    //1.2.2
+    //DONE 8/10/2018: RSI Indicator
+    // DONE: 8/11/2018 Fix issues with scrolling, and click indicator
+
+    //Done 8/3/2018 - Add cloud messaging or push messaging
+    // DONE 8/4/2018(Didnt implement due to FireBase console limitations) - Filter out could message if they have the latest version
+    //  Done 8/4/2018 - Add settings so that someone can turn off messaging
+
+    //DONE 8/5/2018 - ISSUE = when reloading app, it selects the correct first coin but always picks the first one in the list,so the 2nd coin could be incorrect.
+    //DONE 8/5/2018  - ISSUE = Crash when slecting coins with multiple slashes
+    //DONE 8/7/2018 - regression testing - Looping over all the coins to just make sure they load
+    //DONE 8/7/2018 - Check crashes from crashanalitics
+    //DONE 8/8/2018      Have service to daily look at cryptowatch's assets to update the firebase DB
+
+    // Done 8/1/2018 - save off all the coin pair data so loading doesnt take a long time each start up
+    // Done 8/1/2018     Insead of looking at cryptowatch api, look at firebase DB for info..
+    //DONE 7/29/2018 - Combine the coin pairs into 1 dropdown menu
+
+    //DONE 7/5/2018 - Firebase analytics
+    //DONE 7/5/2018 -- UUID for user
+    //DONE 7/26/2018 - Added date on legend when clicking on the graph
+
+    //DONE 7/4/2018 - Feature to share graph
+    //  DONE 7/1/2018 Sharing screenshot to Social media(facebook, insta, Twitter, Snap)
+    // DONE 7/1/2018 - fix permissions smoothness
+    //  Done 7/4/2018    optimize screenshot to fit will with insta for not landscape
+    //  - Upload to server and share with friends using a link using cloudinary
+    // - add picker for file share or upload and link share
+
+    // DONE 7/3/2018 - polish the instance price updater
+    //DONE 7/3/2018 look at why Keltner Channel values are not shoing up on ledgeon when clicking graph.
+    //DONE 7/4/2018 - Handle with internet is out
+
+    // DONE 7/1/2018 - look into removing the soft buttons. Results - Didnt help with the screenshot
+    // DONE 7/2/2018 - clipping of screenshot in landscape
+    // DONE 7/2/2018 - look into increasing bottom bar text size
+    //DONE 6/27/2018 - On tap of charts, show values(OHLC, values on seperate graphs at that X
+    //DONE 6/28/2018 - High light on all graphs
+    //DONE 6/28/2018 - ZigZag position on tap for legend
+    //DONE 6/29/2018 - when a coin, or exchange chages, need to reset default legend. resetting extra
+    //DONE 6/29/2018 - add the color for legend and go to the custom legend insead of extra
+    //DONE 6/30/2018 - Taking a screeshot and saved it to a file & the ability to send text message or other app
+
+    //DONE 7/1/2018 - Make sure that menu and fit all the coins sizes becuase it auto resizes
+
+    //DONE 6/26/2018: Issue when scrolling on 1 diagram and move the other, the diagrams get out of sync on the x-axis
+
+    //Done 6/24/2018 ISSUE - When rotating anc collapsing the RV Overlays, the text edits seems to stay around
+    //Done 6/24/2018 - When the overlay RV is visible, clicking on the screen/graph collapses it.
+    //Done 6/24/2018 - When refreshing and Ich Cloud is up,
+    //      Done 6/24/2018 the seperate graphs end up not bring align until you turn the Ich Cloud on and off
+
+    //DONE 6/23/2018 - error, when flipping screen, adds extra volumn graph
+    //DONE 6/23/2018(some improvments, not perfect - Speed up when orentation is flipped
+
+    //DONE 6/23/2018: Landscape has not all charts can fit without having scrolling. Only on 4 graphs
+
+    //DONE 6/22/2018: Update overlays to version 2.0:
     //      1. DONE 5/28/2018 Have internal dropdowns
     //      2. DONE 6/3/2018 Sliders
     //      3. DONE 6/5/2018 - major - Figure out how to update the edit text faster
-    //      3a.TODO Color picker,
+    //  //DONE 6/22/2018 add timeframe and color details for Exponential_MA
+    //  //DONE 6/22/2018 - Issue timing issue when expanding details and seekbar have invalid initial values.
+    //                      Solution was scalefator was using global which ended being from other seekbars
+    //  //DONE 6/22/2018- updating the edit text from the slider directly without trying to notify a chage
+    //  //DONE 6/22/2018 on the device the ok button doesnt to return for editing the values
+    //      3a.DONE 6/21/2018 Color picker,
     //          DONE 6/14/2018 adding color box,
     //          DONE 6/15/2018 adding click listner to pop up color picker,
     //          Done 6/16/2018 adding change color line on color picker change
     //          DONE 6/16/2018 update preferences for line color
-    //          TODO color picker for when an item doesnt have a detailed list
-    //          TODO update lib to when selecting the color, set the position aswell. This is for defaults if they exist on the graph
-    //          TODO update lib to have reset default button
-    //          TODO Fix slider positions
-    //          TODO, 2nd slider not updating graph
-    //      3b.TODO simplify to have 1 location for values on Overlay
+    //          CHANGED. This shouldnt occur since all items have at least 1 color and 1 timeframe item(2 times)
+    //                      color picker for when an item doesnt have a detailed list
+    //          DONE 6/21/2018 reset color but we dont care about the position the picker
+    //          DONE 6/21/2018, when setting seekbar to zero, the text view and seekbar dissapear
+    //          TOO_HARD update lib to when selecting the color, set the position aswell. This is for defaults if they exist on the graph
+    //          TOO_HARD update lib to have reset default button
+    //          DONE 6/20/2018 Fix slider positions
+    //      3b.DONE 6/20/2018 simplify to have 1 location for values on Overlay
     //      4.Maybe enhancement?- fix data values syncing on edit text
     //      DONE. Dont fill the screen espically on landscape
     //      DONE. Syncing both parent and detailed items to an extent
@@ -32,25 +158,9 @@ class todoClass {
     //          This will make for when collapsing the view with some deailed items visible on the next
     //          reopen to expand the view. When collapsing the items now on the 2nd reopen it causes
     //          extra items to be empty and looks bad.
-
-    //TODO: Landscape has not all charts can fit without having scrolling. Only on 4 graphs
-
-    //TODO: Issue when scrolling on 1 diagram and move the other, the diagrams get out of sync on the x-axis
-
-    //TODO-LOW: Indicators I am interested in adding -
-    //      TODO: Pivot Points, Aroon, Awesome Oscillator, Chande Momentum Oscillator,
-    //      TODO: Coppock Curve, Detrend Price Oscillator, Fisher Transform, Hull Moving Average,
-    //      TODO: Trailing Stop Loss, Triple EMA, Williams %R.
+    //      DONE 6/21/2018, when turning off overlay, collapse the detailed items if exist
 
 
-    //TODO-4: add tabs
-    //          TODO: Tab for cards comparing daily changes kinda like main cryptowat.ch
-    //          https://api.cryptowat.ch/markets/EXCHANGE/COIN_PAIR/summary
-
-    //TODO - Custom settings
-    //      1. Support having 1 handed UX, could mean haveing multiple xmls
-
-    //TODO - Look at CPU usages on cryptowatch api
 
     //DONE 5/26/2018: Make graphs more generic
     //      1a(DONE). Making OverlayAdapter more abstract.
@@ -126,7 +236,7 @@ class todoClass {
 
     //4/15/2018: Add volume bar graph
     //04_08_2018: Figure out how to get softkey on indicators edits. 3/31 - might be an issue with editText in a listview IDK why it oesnt work
-    //DONE: Add source for Binance coins
+    //DONE:    Add source for Binance coins
     //DONE 12_6_2017_pm: REmove y-axis on left side
 
     //DONE 12_6_2017_pm: Fast loads when swapping coins/exchange/base/timeperiod when Technical Analysis is running

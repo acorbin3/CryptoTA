@@ -168,10 +168,7 @@ public class Order implements Serializable {
         if (this.price != other.price && (this.price == null || !this.price.equals(other.price))) {
             return false;
         }
-        if (this.amount != other.amount && (this.amount == null || !this.amount.equals(other.amount))) {
-            return false;
-        }
-        return true;
+        return this.amount == other.amount || (this.amount != null && this.amount.equals(other.amount));
     }
 
     @Override

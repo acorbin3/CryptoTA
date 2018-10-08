@@ -66,7 +66,7 @@ public interface TradingRecord extends Serializable {
      * @param index the index to operate the entry
      * @return true if the entry has been operated, false otherwise
      */
-    boolean enter(int index) ;;
+    boolean enter(int index) ;
 //    {
 //        return enter(index, Decimal.NaN, Decimal.NaN);
 //    }
