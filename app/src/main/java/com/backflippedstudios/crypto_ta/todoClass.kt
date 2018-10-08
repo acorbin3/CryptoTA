@@ -6,29 +6,27 @@ package com.backflippedstudios.crypto_ta
 class todoClass {
 
 
+    //DONE - Add warning that indicator cant be added becuase too many charts
+    //DONE 9/30/2018 - Awesome Oscillator
+    //DONE 9/30/2018 - Rate Of Change
 
+    //DONE 10/2/2018 - Fix simplification on Ich Cloud for seperate charts, Coppock Curve, Chande Momentum Oscillator,
+    //DONE 10/3/2018 - Williams R, Tripple EMA, Ulser Index
 
-
-    // TODO: computed, then go ahead and recalculate ones that have not been selected.
-
-    //TODO: Look into possibly simplifying seperate charts
-
+    //DONE 10/4/2018 - Bug - Why does when changing the values like timeFrame not work?
+    //DONE 10/8/2018 - BUG - When changing exchanges, the overlays do not appear
 
     //TODO: Indicators I am interested in adding -
+    //      TODO: Pivot Points, ,
+    //      TODO: , Fisher Transform,
+    //      TODO: Trailing Stop Loss
 
-    //      TODO: Pivot Points, Aroon, Awesome Oscillator, Chande Momentum Oscillator,
-    //      TODO: Coppock Curve, Detrend Price Oscillator, Fisher Transform, Hull Moving Average,
-    //      TODO: Trailing Stop Loss, Triple EMA, Williams %R.
 
     //TODO - Add splash screen with loading
 
     //TODO - feedback button
 
     // Release 2
-    //TODO - Look into moving legend to bottom left??
-
-
-
 
     //TODO-4: add tabs
     //          TODO: Tab for cards comparing daily changes kinda like main cryptowat.ch
@@ -38,7 +36,19 @@ class todoClass {
     //      1. Support having 1 handed UX, could mean haveing multiple xmls
 
     //TODO - Look at CPU usages on cryptowatch api
+    //TODO - Look into moving legend to bottom left??
 
+
+    // 1.3.2-1.3.7
+    // DONE 9/18/2018: Made initial loading faster by storing the coins locally
+    //DONE: Look into possibly simplifying seperate charts
+
+    // DONE 9/20/2018: computed, then go ahead and recalculate ones that have not been selected.
+    // DONE : Detrend Price Oscillator
+    // DONE 9/20/2018 - Hull Moving Average
+    // DONE  - ZLEMA
+    // DONE - Volume Weighted Average Price
+    // DONE 9/27/2018 - Moving volume weighted average price
 
     // 1.3.1
     //8/22/2018: Testing - Fix regression testing
