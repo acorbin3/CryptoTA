@@ -2,7 +2,7 @@ package com.backflippedstudios.crypto_ta.xaxisformats
 
 import android.os.Parcel
 import android.os.Parcelable
-import com.backflippedstudios.crypto_ta.DataSource
+import com.backflippedstudios.crypto_ta.data.DataSource
 import com.backflippedstudios.crypto_ta.MainActivity
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.formatter.IAxisValueFormatter

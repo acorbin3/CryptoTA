@@ -74,8 +74,12 @@ public class CandleStickChartRenderer extends LineScatterCandleRadarRenderer {
             if(dataSet.getEntryCount() == 0)
                 continue;
             // get the entry
-            CandleEntry e = dataSet.getEntryForIndex(j);
-
+            CandleEntry e;
+            try {
+                e = dataSet.getEntryForIndex(j);
+            }catch(Exception ex){
+                continue;
+            }
             if (e == null)
                 continue;
 

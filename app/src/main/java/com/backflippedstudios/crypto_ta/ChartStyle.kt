@@ -222,6 +222,12 @@ class ChartStyle(context: Context) {
                 }
                 it.invalidate()
             }
+        }else{
+            mChart?.let{
+                chartDefaults(it,false)
+                it.fitScreen()
+                it.invalidate()
+            }
         }
     }
     fun updateVolumeGraph(ta: TechnicalAnalysis,mChart: CombinedChart?, moveViewToEnd: Boolean = false){
@@ -282,22 +288,27 @@ class ChartStyle(context: Context) {
         }
     }
     private fun AddOneLine(ticks: ArrayList<Entry>, lineStyle: LineStyle , lineData: ArrayList<ILineDataSet>){
-        val lineDataSet = LineDataSet(ticks,lineStyle.lineLabel)
-        lineDataSet.valueTextSize = lineStyle.textSize
-        lineDataSet.valueTextColor = lineStyle.textColor
-        lineDataSet.isHighlightEnabled = true
+        try {
+            val lineDataSet = LineDataSet(ticks, lineStyle.lineLabel)
+
+            lineDataSet.valueTextSize = lineStyle.textSize
+            lineDataSet.valueTextColor = lineStyle.textColor
+            lineDataSet.isHighlightEnabled = true
 //        lineDataSet.setDrawHighlightIndicators(true)
 //        lineDataSet.highLightColor = color
-        lineDataSet.setDrawValues(lineStyle.drawValues)
-        lineDataSet.setDrawIcons(false)
-        lineDataSet.setDrawCircles(false)
-        lineDataSet.setDrawCircleHole(false)
-        lineDataSet.setDrawFilled(lineStyle.filled)
-        lineDataSet.fillColor = lineStyle.filledColor
-        lineDataSet.color = lineStyle.lineColor
-        lineDataSet.axisDependency = lineStyle.axisDependency
-        if(lineDataSet.values.isNotEmpty()) {
-            lineData.add(lineDataSet)
+            lineDataSet.setDrawValues(lineStyle.drawValues)
+            lineDataSet.setDrawIcons(false)
+            lineDataSet.setDrawCircles(false)
+            lineDataSet.setDrawCircleHole(false)
+            lineDataSet.setDrawFilled(lineStyle.filled)
+            lineDataSet.fillColor = lineStyle.filledColor
+            lineDataSet.color = lineStyle.lineColor
+            lineDataSet.axisDependency = lineStyle.axisDependency
+            if (lineDataSet.values.isNotEmpty()) {
+                lineData.add(lineDataSet)
+            }
+        } catch (e: Exception) {
+
         }
     }
 }
