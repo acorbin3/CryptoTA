@@ -16,6 +16,9 @@ class todoClass {
     //DONE 10/4/2018 - Bug - Why does when changing the values like timeFrame not work?
     //DONE 10/8/2018 - BUG - When changing exchanges, the overlays do not appear
 
+    //DONE 10/9/2018 - Added Positive & Negative volume indicators, On Balance Power Indicator
+    //               - Attempted to add in Piviot points
+
     //TODO: Indicators I am interested in adding -
     //      TODO: Pivot Points, ,
     //      TODO: , Fisher Transform,

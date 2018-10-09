@@ -21,10 +21,11 @@ import org.ta4j.core.indicators.*
 import org.ta4j.core.indicators.ichimoku.*
 import org.ta4j.core.indicators.keltner.KeltnerChannelLowerIndicator
 import org.ta4j.core.indicators.keltner.KeltnerChannelUpperIndicator
-import org.ta4j.core.indicators.volume.AccumulationDistributionIndicator
-import org.ta4j.core.indicators.volume.ChaikinMoneyFlowIndicator
-import org.ta4j.core.indicators.volume.MVWAPIndicator
-import org.ta4j.core.indicators.volume.VWAPIndicator
+import org.ta4j.core.indicators.pivotpoints.PivotLevel
+import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator
+import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator
+import org.ta4j.core.indicators.pivotpoints.TimeLevel
+import org.ta4j.core.indicators.volume.*
 import kotlin.math.absoluteValue
 
 
@@ -186,6 +187,10 @@ class TechnicalAnalysis {
             Williams__R -> updateWR(OverlayAdapter.getTimeframe(overlayKind).toInt())
             Ulcer_Index -> updateUlcerIndex(OverlayAdapter.getTimeframe(overlayKind).toInt())
             Chaikin_Money_Flow ->updateChaikinMoneyFlow(OverlayAdapter.getTimeframe(overlayKind).toInt())
+            Positive_Volume -> updatePositiveVolume()
+            Negative_Volume -> updateNegativeVolume()
+            On_Balance_Volume -> updateOnBalanceVolume()
+            Piviot_Point -> updatePiviotPoints(TimeLevel.MONTH) //TODO - Add in some kind of selection from user
             Triple_EMA -> updateTripleEMA(OverlayAdapter.getTimeframe(overlayKind).toInt())
             Kaufman_Adaptive_MA -> updateKAMA(OverlayAdapter.getTimeframe(Kaufman_Adaptive_MA).toInt(),
                     OverlayAdapter.getTimeframeFast(Kaufman_Adaptive_MA).toInt(),
@@ -369,6 +374,88 @@ class TechnicalAnalysis {
             }
         }
     }
+
+    private fun updatePositiveVolume(){
+        var kind = Positive_Volume
+        this.getEntryData(kind).clear()
+        var data = PVIIndicator(this.ts)
+        for (i in 0 until this.ts?.tickCount!!) {
+            if(data.timeSeries.tickCount > i){
+                val value = data.getValue(i).toDouble().toFloat()
+                this.getEntryData(kind).add(Entry(i.toFloat(),value))
+            }
+        }
+    }
+
+    private fun updateNegativeVolume(){
+        var kind = Negative_Volume
+        this.getEntryData(kind).clear()
+        var data = NVIIndicator(this.ts)
+        for (i in 0 until this.ts?.tickCount!!) {
+            if(data.timeSeries.tickCount > i){
+                val value = data.getValue(i).toDouble().toFloat()
+                this.getEntryData(kind).add(Entry(i.toFloat(),value))
+            }
+        }
+    }
+
+    private fun updateOnBalanceVolume(){
+        var kind = On_Balance_Volume
+        this.getEntryData(kind).clear()
+        var data = OnBalanceVolumeIndicator(this.ts)
+        for (i in 0 until this.ts?.tickCount!!) {
+            if(data.timeSeries.tickCount > i){
+                val value = data.getValue(i).toDouble().toFloat()
+                this.getEntryData(kind).add(Entry(i.toFloat(),value))
+            }
+        }
+    }
+
+    private fun updatePiviotPoints(timeLevel: TimeLevel){
+        var kind = Piviot_Point
+        this.getEntryData(kind).clear()
+        this.getEntryData(D_PP_R1).clear()
+        this.getEntryData(D_PP_R2).clear()
+        this.getEntryData(D_PP_R3).clear()
+        this.getEntryData(D_PP_S1).clear()
+        this.getEntryData(D_PP_S2).clear()
+        this.getEntryData(D_PP_S3).clear()
+        var data = PivotPointIndicator(this.ts,timeLevel)
+        var dataR1 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
+        var dataR2 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
+        var dataR3 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
+        var dataS1 = StandardReversalIndicator(data,PivotLevel.SUPPORT_1)
+        var dataS2 = StandardReversalIndicator(data,PivotLevel.SUPPORT_2)
+        var dataS3 = StandardReversalIndicator(data,PivotLevel.SUPPORT_3)
+
+        for (i in 0 until this.ts?.tickCount!!) {
+            if(data.timeSeries.tickCount > i){
+                if(i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+                if(i < dataR1.timeSeries.tickCount)
+                    this.getEntryData(D_PP_R1).add(Entry(i.toFloat(),dataR1.getValue(i).toDouble().toFloat()))
+
+                if(i < dataR2.timeSeries.tickCount)
+                    this.getEntryData(D_PP_R2).add(Entry(i.toFloat(),dataR2.getValue(i).toDouble().toFloat()))
+
+                if(i < dataR3.timeSeries.tickCount)
+                    this.getEntryData(D_PP_R3).add(Entry(i.toFloat(),dataR3.getValue(i).toDouble().toFloat()))
+
+                if(i < dataS1.timeSeries.tickCount)
+                    this.getEntryData(D_PP_S1).add(Entry(i.toFloat(),dataS1.getValue(i).toDouble().toFloat()))
+
+                if(i < dataS2.timeSeries.tickCount)
+                    this.getEntryData(D_PP_S2).add(Entry(i.toFloat(),dataS2.getValue(i).toDouble().toFloat()))
+
+                if(i < dataS3.timeSeries.tickCount)
+                    this.getEntryData(D_PP_S3).add(Entry(i.toFloat(),dataS3.getValue(i).toDouble().toFloat()))
+            }
+        }
+    }
+
+
 
     private fun updateTripleEMA(timeFrame: Int){
         var kind = Triple_EMA

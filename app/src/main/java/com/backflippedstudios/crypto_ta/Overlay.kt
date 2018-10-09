@@ -2,6 +2,7 @@ package com.backflippedstudios.crypto_ta
 
 import android.content.Context
 import android.support.v4.content.ContextCompat
+import org.ta4j.core.indicators.pivotpoints.TimeLevel
 
 data class Overlay(val context: Context, val kind: Kind){
 
@@ -39,6 +40,7 @@ data class Overlay(val context: Context, val kind: Kind){
     var thresholdPercent: Int = 0
     var separateChart: Boolean = false
     var valuesAreInts: Boolean = true
+    var timeLevel: TimeLevel = TimeLevel.TICKBASED
     // The values represents each of the editable text items that an overlay can edit. A positive
     // value will mean that it can be visible and editable
     var values: Array<Values> = Array(4,{ _ -> Values()})
@@ -598,6 +600,77 @@ data class Overlay(val context: Context, val kind: Kind){
                 kindData = KindData(false,true,Kind.Chaikin_Money_Flow,-1,0)
             }
 
+            Overlay.Kind.Positive_Volume ->{
+                this.separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,Kind.Positive_Volume,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Positive_Volume.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_cyan_700)
+            }
+            Overlay.Kind.D_PV_COLOR ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Positive_Volume,-1,0)
+            }
+
+            Overlay.Kind.Negative_Volume ->{
+                this.separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_red_700)
+            }
+            Overlay.Kind.D_NV_COLOR ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Negative_Volume,-1,0)
+            }
+
+            Overlay.Kind.On_Balance_Volume ->{
+                this.separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_amber_500)
+            }
+            Overlay.Kind.D_OBV_COLOR ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.On_Balance_Volume,-1,0)
+            }
+
+            Overlay.Kind.Piviot_Point ->{
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_red_600)
+            }
+            Overlay.Kind.D_PP_R1 ->{
+                allIndicatorInfo[0].label = "R1"
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+            }
+            Overlay.Kind.D_PP_R2 ->{
+                allIndicatorInfo[0].label = "R2"
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+            }
+            Overlay.Kind.D_PP_R3 ->{
+                allIndicatorInfo[0].label = "R3"
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+            }
+            Overlay.Kind.D_PP_S1 ->{
+                allIndicatorInfo[0].label = "S1"
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+            }
+            Overlay.Kind.D_PP_S2 ->{
+                allIndicatorInfo[0].label = "S2"
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+            }
+            Overlay.Kind.D_PP_S3 ->{
+                allIndicatorInfo[0].label = "S3"
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+            }
+
             Overlay.Kind.Triple_EMA ->{
                 values[0].value = 9.0
                 values[0].min = 0.5
@@ -930,9 +1003,26 @@ data class Overlay(val context: Context, val kind: Kind){
         D_CMF_Timeframe,
         D_CMF_COLOR,
 
+        Positive_Volume,
+        D_PV_COLOR,
+
+        Negative_Volume,
+        D_NV_COLOR,
+
+        On_Balance_Volume,
+        D_OBV_COLOR,
+
         Triple_EMA,
         D_TEMA_Timeframe,
         D_TEMA_COLOR,
+
+        Piviot_Point,
+        D_PP_R1,
+        D_PP_R2,
+        D_PP_R3,
+        D_PP_S1,
+        D_PP_S2,
+        D_PP_S3,
 
         Bollinger_Bands,
         D_BB_Timeframe,
