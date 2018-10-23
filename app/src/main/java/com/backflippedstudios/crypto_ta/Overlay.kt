@@ -8,6 +8,7 @@ data class Overlay(val context: Context, val kind: Kind){
 
     enum class IndicatorType{
         Line,
+        Piviot_Line,
         Scatter
     }
     data class IndicatorInfo(
@@ -287,14 +288,6 @@ data class Overlay(val context: Context, val kind: Kind){
 
                 allIndicatorInfo[4].color = sharedPref.getInt(Overlay.Kind.D_Ich_Cloud_Lagging.toString() + "_COLOR",0)
                 allIndicatorInfo[4].colorDefault = ContextCompat.getColor(context,R.color.md_white_1000)
-            }
-            Overlay.Kind.D_Ich_Cloud_Lead_A -> {
-                allIndicatorInfo[0].label = "Leading A"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,-1,0, true, true)
-            }
-            Overlay.Kind.D_Ich_Cloud_Lead_B -> {
-                allIndicatorInfo[0].label = "Leading B"
-                kindData = KindData(false,true,Kind.Ichimoku_Cloud,-1,1, true, true)
             }
             Overlay.Kind.D_Ich_Cloud_Lead_A -> {
                 allIndicatorInfo[0].label = "Leading A"
@@ -644,31 +637,68 @@ data class Overlay(val context: Context, val kind: Kind){
                 allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
                 kindData = KindData(true,false,this.kind,-1,0, true, true)
                 allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
-                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_red_600)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_yellow_500)
+                allIndicatorInfo[0].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[1].label = "R1"
+                allIndicatorInfo[1].selectedLegendLabel = "R1"
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_PP_R1.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_light_green_500)
+                allIndicatorInfo[1].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[2].label = "R2"
+                allIndicatorInfo[2].selectedLegendLabel = "R2"
+                allIndicatorInfo[2].color = sharedPref.getInt(Overlay.Kind.D_PP_R2.toString() + "_COLOR",0)
+                allIndicatorInfo[2].colorDefault = ContextCompat.getColor(context,R.color.md_light_green_500)
+                allIndicatorInfo[2].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[3].label = "R3"
+                allIndicatorInfo[3].selectedLegendLabel = "R3"
+                allIndicatorInfo[3].color = sharedPref.getInt(Overlay.Kind.D_PP_R3.toString() + "_COLOR",0)
+                allIndicatorInfo[3].colorDefault = ContextCompat.getColor(context,R.color.md_light_green_500)
+                allIndicatorInfo[3].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[4].label = "S1"
+                allIndicatorInfo[4].selectedLegendLabel = "S1"
+                allIndicatorInfo[4].color = sharedPref.getInt(Overlay.Kind.D_PP_S1.toString() + "_COLOR",0)
+                allIndicatorInfo[4].colorDefault = ContextCompat.getColor(context,R.color.md_red_600)
+                allIndicatorInfo[4].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[5].label = "S2"
+                allIndicatorInfo[5].selectedLegendLabel = "S2"
+                allIndicatorInfo[5].color = sharedPref.getInt(Overlay.Kind.D_PP_S2.toString() + "_COLOR",0)
+                allIndicatorInfo[5].colorDefault = ContextCompat.getColor(context,R.color.md_red_600)
+                allIndicatorInfo[5].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[6].label = "S3"
+                allIndicatorInfo[6].selectedLegendLabel = "S3"
+                allIndicatorInfo[6].color = sharedPref.getInt(Overlay.Kind.D_PP_S3.toString() + "_COLOR",0)
+                allIndicatorInfo[6].colorDefault = ContextCompat.getColor(context,R.color.md_red_600)
+                allIndicatorInfo[6].type = IndicatorType.Piviot_Line
             }
             Overlay.Kind.D_PP_R1 ->{
                 allIndicatorInfo[0].label = "R1"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,1,false,true)
             }
             Overlay.Kind.D_PP_R2 ->{
                 allIndicatorInfo[0].label = "R2"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,2,false,true)
             }
             Overlay.Kind.D_PP_R3 ->{
                 allIndicatorInfo[0].label = "R3"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,3,false,true)
             }
             Overlay.Kind.D_PP_S1 ->{
                 allIndicatorInfo[0].label = "S1"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,4,false,true)
             }
             Overlay.Kind.D_PP_S2 ->{
                 allIndicatorInfo[0].label = "S2"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,5,false,true)
             }
             Overlay.Kind.D_PP_S3 ->{
                 allIndicatorInfo[0].label = "S3"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,0,false,true)
+                kindData = KindData(false,true,Kind.Piviot_Point,-1,6,false,true)
             }
 
             Overlay.Kind.Triple_EMA ->{

@@ -106,6 +106,11 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
 			index--;
 		}
 
+		// This is to prevent any invalid indexes
+        if (index == 0) {
+            return previousTicks;
+        }
+
 		// index = last tick in same period, index-1 = first tick in previous period
         long previousPeriod = getPreviousPeriod(currentTick, index-1);
 		while(index-1 >= getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getTick(index-1)) == previousPeriod){ // while tick-n in previous period

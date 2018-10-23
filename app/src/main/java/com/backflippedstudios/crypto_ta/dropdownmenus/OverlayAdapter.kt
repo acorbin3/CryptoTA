@@ -237,6 +237,18 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                 data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.selectedLegendLabel
             }
         }
+        fun getLegendText(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): String? {
+            return if (kind == parentKind) {
+                data.all[kind]?.allIndicatorInfo?.get(0)?.label
+
+            } else {
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.label
+            }
+        }
+
+        fun isParentSelected(parentKind: Overlay.Kind): Boolean{
+            return data.all[parentKind]?.selected!!
+        }
 
     }
 

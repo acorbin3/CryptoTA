@@ -6,21 +6,8 @@ package com.backflippedstudios.crypto_ta
 class todoClass {
 
 
-    //DONE - Add warning that indicator cant be added becuase too many charts
-    //DONE 9/30/2018 - Awesome Oscillator
-    //DONE 9/30/2018 - Rate Of Change
-
-    //DONE 10/2/2018 - Fix simplification on Ich Cloud for seperate charts, Coppock Curve, Chande Momentum Oscillator,
-    //DONE 10/3/2018 - Williams R, Tripple EMA, Ulser Index
-
-    //DONE 10/4/2018 - Bug - Why does when changing the values like timeFrame not work?
-    //DONE 10/8/2018 - BUG - When changing exchanges, the overlays do not appear
-
-    //DONE 10/9/2018 - Added Positive & Negative volume indicators, On Balance Power Indicator
-    //               - Attempted to add in Piviot points
 
     //TODO: Indicators I am interested in adding -
-    //      TODO: Pivot Points, ,
     //      TODO: , Fisher Transform,
     //      TODO: Trailing Stop Loss
 
@@ -41,6 +28,27 @@ class todoClass {
     //TODO - Look at CPU usages on cryptowatch api
     //TODO - Look into moving legend to bottom left??
 
+
+    //Release 1.3.11
+    //DONE - Add warning that indicator cant be added becuase too many charts
+    //DONE 9/30/2018 - Awesome Oscillator
+    //DONE 9/30/2018 - Rate Of Change
+
+    //DONE 10/2/2018 - Fix simplification on Ich Cloud for seperate charts, Coppock Curve, Chande Momentum Oscillator,
+    //DONE 10/3/2018 - Williams R, Tripple EMA, Ulser Index
+
+    //DONE 10/4/2018 - Bug - Why does when changing the values like timeFrame not work?
+    //DONE 10/8/2018 - BUG - When changing exchanges, the overlays do not appear
+
+    //DONE 10/9/2018 - Added Positive & Negative volume indicators, On Balance Power Indicator
+    //               - Attempted to add in Piviot points
+
+    //DONE 10/23/2018 Piviot points
+    // DONE 10/23/2018 - Fix default legeond
+    // DONE 10/23/2018 - Fix on click legond
+
+    //DONE 10/23/2018  - enhancement - When wanting to reload, there is a thread running in the background
+    // DONE 10/23/2018  calculating the non selected indicatiors, that needs to be killed.
 
     // 1.3.2-1.3.7
     // DONE 9/18/2018: Made initial loading faster by storing the coins locally

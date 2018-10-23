@@ -30,7 +30,7 @@ class ChartStyle(context: Context) {
     fun updateCandlestickGraph(ta: TechnicalAnalysis,mChart: CombinedChart?){
         val combinedData = CombinedData()
         //Do candlestick data
-        val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick), "Candlestick Data Set")
+        val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick) as MutableList<CandleEntry>?, "Candlestick Data Set")
         updateCandleDataFormat(candleDataSet)
         candleDataSet.axisDependency = YAxis.AxisDependency.RIGHT
 
@@ -115,6 +115,29 @@ class ChartStyle(context: Context) {
                             Overlay.IndicatorType.Line -> {
                                 if(!list[i].isEmpty()) {
                                     AddOneLine(list[i], overlay.allIndicatorInfo[i].label, overlay.allIndicatorInfo[i].color, allLine_Data)
+                                }
+                            }
+                            Overlay.IndicatorType.Piviot_Line ->{
+                                if(!list[i].isEmpty()) {
+                                    var segment  = ArrayList<Entry>()
+                                    var lastEntry = list[i].first()
+                                    //loop over and find segments
+                                    //when transition to new segment add new line and clear segment
+                                    list[i].forEachIndexed{ index, entry ->
+                                        if(!entry.y.isNaN()){
+                                            if(lastEntry.y != entry.y || index == list[i].lastIndex){
+                                                if(index == list[i].lastIndex){
+                                                    segment.add(entry)
+                                                }
+//                                                println("Doesnt match, adding to list. Segmet size ${segment.size}")
+                                                AddOneLine(segment, overlay.allIndicatorInfo[i].label, overlay.allIndicatorInfo[i].color, allLine_Data)
+                                                segment = ArrayList<Entry>()
+                                            }
+//                                            println("Adding ${entry.x},${entry.y}")
+                                            segment.add(entry)
+                                            lastEntry = entry
+                                        }
+                                    }
                                 }
                             }
                             Overlay.IndicatorType.Scatter -> {

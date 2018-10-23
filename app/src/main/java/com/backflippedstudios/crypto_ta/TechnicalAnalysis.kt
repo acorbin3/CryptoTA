@@ -96,13 +96,13 @@ class TechnicalAnalysis {
     }
     fun getData(kind: Overlay.Kind): ArrayList<ArrayList<Entry>>{
         var list: ArrayList<ArrayList<Entry>> = ArrayList()
-
-        for(overlay in OverlayAdapter.data.all.values){
-            if(overlay.kindData.parentKind == kind && overlay.kindData.hasData){
+        for(overlay in Overlay.Kind.values()){
+            if(OverlayAdapter.data.all[overlay]?.kindData?.parentKind == kind && OverlayAdapter.data.all[overlay]?.kindData?.hasData!!){
                 if(kind != Exponential_MA_Ribbon) {
-                    list.add(getEntryData(overlay.kind))
+                    println("Adding data to list: ${OverlayAdapter.data.all[overlay]?.kind}")
+                    list.add(getEntryData(OverlayAdapter.data.all[overlay]?.kind!!))
                 }else{
-                    return getEntryDataList(overlay.kind)
+                    return getEntryDataList(OverlayAdapter.data.all[overlay]?.kind!!)
                 }
             }
         }
@@ -120,6 +120,8 @@ class TechnicalAnalysis {
     fun updateNonSelectedItems(){
         try {
             for (overlay in OverlayAdapter.data.list) {
+                if(MainActivity.data.endTA)
+                    break
                 if (overlay.selected) {
                     continue
                 }
@@ -190,7 +192,15 @@ class TechnicalAnalysis {
             Positive_Volume -> updatePositiveVolume()
             Negative_Volume -> updateNegativeVolume()
             On_Balance_Volume -> updateOnBalanceVolume()
-            Piviot_Point -> updatePiviotPoints(TimeLevel.MONTH) //TODO - Add in some kind of selection from user
+            Piviot_Point -> {
+                var timeLevel: TimeLevel
+                if(MainActivity.data.saved_time_period < 6){
+                    timeLevel = TimeLevel.DAY
+                }else{
+                    timeLevel = TimeLevel.WEEK
+                }
+                updatePiviotPoints(timeLevel)
+            }
             Triple_EMA -> updateTripleEMA(OverlayAdapter.getTimeframe(overlayKind).toInt())
             Kaufman_Adaptive_MA -> updateKAMA(OverlayAdapter.getTimeframe(Kaufman_Adaptive_MA).toInt(),
                     OverlayAdapter.getTimeframeFast(Kaufman_Adaptive_MA).toInt(),
@@ -238,7 +248,7 @@ class TechnicalAnalysis {
         this.getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).clear()
         for(timeframe in 20..55 step 5){
             val ema = EMAIndicator(closePrice, timeframe)
-            var emaList = ArrayList<Entry>()
+            val emaList = ArrayList<Entry>()
             for (j in 0 until closePrice.timeSeries.tickCount) {
                 if(ema.timeSeries.tickCount > j)
                     emaList.add(Entry(j.toFloat(),ema.getValue(j).toDouble().toFloat()))
@@ -250,7 +260,7 @@ class TechnicalAnalysis {
 
     private fun updateHMA(timeFrame: Int){
         this.getEntryData(Hull_Moving_Average).clear()
-        var hmaData = HMAIndicator(closePrice,timeFrame)
+        val hmaData = HMAIndicator(closePrice,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(hmaData.timeSeries.tickCount > i)
                 this.getEntryData(Hull_Moving_Average).add(Entry(i.toFloat(),hmaData.getValue(i).toDouble().toFloat()))
@@ -259,7 +269,7 @@ class TechnicalAnalysis {
 
     private fun updateZLEMA(timeFrame: Int){
         this.getEntryData(Zero_Lag_Moving_Average).clear()
-        var data = ZLEMAIndicator(closePrice,timeFrame)
+        val data = ZLEMAIndicator(closePrice,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i)
                 this.getEntryData(Zero_Lag_Moving_Average).add(Entry(i.toFloat(),data.getValue(i).toDouble().toFloat()))
@@ -268,7 +278,7 @@ class TechnicalAnalysis {
 
     private fun updateVWAP(timeFrame: Int){
         this.getEntryData(Volume_Weighted_Average_Price).clear()
-        var data = VWAPIndicator(this.ts,timeFrame)
+        val data = VWAPIndicator(this.ts,timeFrame)
         this.vwapIndicator = data
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i)
@@ -278,7 +288,7 @@ class TechnicalAnalysis {
 
     private fun updateMVWAP(timeFrame: Int){
         this.getEntryData(Moving_Volume_Weighted_Average_Price).clear()
-        var data = MVWAPIndicator(this.vwapIndicator,timeFrame)
+        val data = MVWAPIndicator(this.vwapIndicator,timeFrame)
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i)
                 this.getEntryData(Moving_Volume_Weighted_Average_Price).add(Entry(i.toFloat(),data.getValue(i).toDouble().toFloat()))
@@ -287,7 +297,7 @@ class TechnicalAnalysis {
 
     private fun updateKAMA(timeFrameRatio: Int, timeFrameFast: Int, timeFrameSlow: Int){
         this.getEntryData(Kaufman_Adaptive_MA).clear()
-        var data = KAMAIndicator(this.closePrice,timeFrameRatio, timeFrameFast, timeFrameSlow)
+        val data = KAMAIndicator(this.closePrice,timeFrameRatio, timeFrameFast, timeFrameSlow)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             val value = data.getValue(i).toDouble().toFloat()
             this.getEntryData(Kaufman_Adaptive_MA).add(Entry(i.toFloat(),value))
@@ -296,7 +306,7 @@ class TechnicalAnalysis {
 
     private fun updateAO(timeFrame1: Int, timeFrame2: Int){
         this.getEntryData(Awesome_Oscillator).clear()
-        var data = AwesomeOscillatorIndicator(this.closePrice,timeFrame1,timeFrame2)
+        val data = AwesomeOscillatorIndicator(this.closePrice,timeFrame1,timeFrame2)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i) {
                 val value = data.getValue(i).toDouble().toFloat()
@@ -307,7 +317,7 @@ class TechnicalAnalysis {
 
     private fun updateROC(timeFrame: Int){
         this.getEntryData(Rate_Of_Change).clear()
-        var data = ROCIndicator(this.closePrice,timeFrame)
+        val data = ROCIndicator(this.closePrice,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -317,9 +327,9 @@ class TechnicalAnalysis {
     }
 
     private fun updateCMO(timeFrame: Int){
-        var kind = Chande_Momentum_Oscillator
+        val kind = Chande_Momentum_Oscillator
         this.getEntryData(kind).clear()
-        var data = CMOIndicator(this.closePrice,timeFrame)
+        val data = CMOIndicator(this.closePrice,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -329,9 +339,9 @@ class TechnicalAnalysis {
     }
 
     private fun updateCC(longTimeFrame: Int, shortTimeframe: Int, wmaTimeFrame: Int){
-        var kind = Coppock_Curve
+        val kind = Coppock_Curve
         this.getEntryData(kind).clear()
-        var data = CoppockCurveIndicator(this.closePrice,longTimeFrame,shortTimeframe,wmaTimeFrame)
+        val data = CoppockCurveIndicator(this.closePrice,longTimeFrame,shortTimeframe,wmaTimeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -340,9 +350,9 @@ class TechnicalAnalysis {
         }
     }
     private fun updateWR(timeFrame: Int){
-        var kind = Williams__R
+        val kind = Williams__R
         this.getEntryData(kind).clear()
-        var data = WilliamsRIndicator(this.ts,timeFrame)
+        val data = WilliamsRIndicator(this.ts,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -352,9 +362,9 @@ class TechnicalAnalysis {
     }
 
     private fun updateUlcerIndex(timeFrame: Int){
-        var kind = Ulcer_Index
+        val kind = Ulcer_Index
         this.getEntryData(kind).clear()
-        var data = UlcerIndexIndicator(this.closePrice,timeFrame)
+        val data = UlcerIndexIndicator(this.closePrice,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -364,9 +374,9 @@ class TechnicalAnalysis {
     }
 
     private fun updateChaikinMoneyFlow(timeFrame: Int){
-        var kind = Chaikin_Money_Flow
+        val kind = Chaikin_Money_Flow
         this.getEntryData(kind).clear()
-        var data = ChaikinMoneyFlowIndicator(this.ts,timeFrame)
+        val data = ChaikinMoneyFlowIndicator(this.ts,timeFrame)
         for (i in 0 until closePrice.timeSeries.tickCount) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -376,9 +386,9 @@ class TechnicalAnalysis {
     }
 
     private fun updatePositiveVolume(){
-        var kind = Positive_Volume
+        val kind = Positive_Volume
         this.getEntryData(kind).clear()
-        var data = PVIIndicator(this.ts)
+        val data = PVIIndicator(this.ts)
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -388,9 +398,9 @@ class TechnicalAnalysis {
     }
 
     private fun updateNegativeVolume(){
-        var kind = Negative_Volume
+        val kind = Negative_Volume
         this.getEntryData(kind).clear()
-        var data = NVIIndicator(this.ts)
+        val data = NVIIndicator(this.ts)
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -400,9 +410,9 @@ class TechnicalAnalysis {
     }
 
     private fun updateOnBalanceVolume(){
-        var kind = On_Balance_Volume
+        val kind = On_Balance_Volume
         this.getEntryData(kind).clear()
-        var data = OnBalanceVolumeIndicator(this.ts)
+        val data = OnBalanceVolumeIndicator(this.ts)
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -412,7 +422,7 @@ class TechnicalAnalysis {
     }
 
     private fun updatePiviotPoints(timeLevel: TimeLevel){
-        var kind = Piviot_Point
+        val kind = Piviot_Point
         this.getEntryData(kind).clear()
         this.getEntryData(D_PP_R1).clear()
         this.getEntryData(D_PP_R2).clear()
@@ -420,13 +430,13 @@ class TechnicalAnalysis {
         this.getEntryData(D_PP_S1).clear()
         this.getEntryData(D_PP_S2).clear()
         this.getEntryData(D_PP_S3).clear()
-        var data = PivotPointIndicator(this.ts,timeLevel)
-        var dataR1 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
-        var dataR2 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
-        var dataR3 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
-        var dataS1 = StandardReversalIndicator(data,PivotLevel.SUPPORT_1)
-        var dataS2 = StandardReversalIndicator(data,PivotLevel.SUPPORT_2)
-        var dataS3 = StandardReversalIndicator(data,PivotLevel.SUPPORT_3)
+        val data = PivotPointIndicator(this.ts,timeLevel)
+        val dataR1 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_1)
+        val dataR2 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_2)
+        val dataR3 = StandardReversalIndicator(data,PivotLevel.RESISTANCE_3)
+        val dataS1 = StandardReversalIndicator(data,PivotLevel.SUPPORT_1)
+        val dataS2 = StandardReversalIndicator(data,PivotLevel.SUPPORT_2)
+        val dataS3 = StandardReversalIndicator(data,PivotLevel.SUPPORT_3)
 
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i){
@@ -458,21 +468,26 @@ class TechnicalAnalysis {
 
 
     private fun updateTripleEMA(timeFrame: Int){
-        var kind = Triple_EMA
-        this.getEntryData(kind).clear()
-        var data = TripleEMAIndicator(this.closePrice,timeFrame)
-        for (i in 0 until closePrice.timeSeries.tickCount) {
-            if(data.timeSeries.tickCount > i){
-                val value = data.getValue(i).toDouble().toFloat()
-                this.getEntryData(kind).add(Entry(i.toFloat(),value))
+        try {
+
+            val kind = Triple_EMA
+            this.getEntryData(kind).clear()
+            val data = TripleEMAIndicator(this.closePrice, timeFrame)
+            for (i in 0 until closePrice.timeSeries.tickCount) {
+                if (data.timeSeries.tickCount > i) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
             }
+        }catch (E: Exception){
+
         }
     }
 
     private fun updateAccumDist(){
-        var kind = Accumulation_Distribution
+        val kind = Accumulation_Distribution
         this.getEntryData(kind).clear()
-        var data = AccumulationDistributionIndicator(this.ts)
+        val data = AccumulationDistributionIndicator(this.ts)
         for (i in 0 until this.ts?.tickCount!!) {
             if(data.timeSeries.tickCount > i){
                 val value = data.getValue(i).toDouble().toFloat()
@@ -560,13 +575,13 @@ class TechnicalAnalysis {
         this.getEntryData(Overlay.Kind.D_Ich_Cloud_Lead_B).clear()
         this.getEntryData(Overlay.Kind.D_Ich_Cloud_Lagging).clear()
 
-        var conversionData = IchimokuTenkanSenIndicator(ts, conversionPeriod)
-        var baseData = IchimokuKijunSenIndicator(ts,basePeriod)
-        var leadingAData = IchimokuSenkouSpanAIndicator(ts, conversionPeriod,basePeriod)
-        var leadingBData = IchimokuSenkouSpanBIndicator(ts,leadingPeriod)
-        var laggingData = IchimokuChikouSpanIndicator(ts,laggingPeriod)
+        val conversionData = IchimokuTenkanSenIndicator(ts, conversionPeriod)
+        val baseData = IchimokuKijunSenIndicator(ts,basePeriod)
+        val leadingAData = IchimokuSenkouSpanAIndicator(ts, conversionPeriod,basePeriod)
+        val leadingBData = IchimokuSenkouSpanBIndicator(ts,leadingPeriod)
+        val laggingData = IchimokuChikouSpanIndicator(ts,laggingPeriod)
         for (j in 0 until closePrice.timeSeries.tickCount) {
-            var leadX = j.toFloat() + laggingPeriod
+            val leadX = j.toFloat() + laggingPeriod
 //            println("X: $leadX A ${leadingAData.getValue(j)} B ${leadingBData.getValue(j)}")
             if(j < conversionData.timeSeries.tickCount)
                 this.getEntryData(Overlay.Kind.D_Ich_Cloud_Conversion).add(Entry(j.toFloat(), conversionData.getValue(j).toDouble().toFloat()))
@@ -615,7 +630,7 @@ class TechnicalAnalysis {
         val sod = StochasticOscillatorDIndicator(sma)
         if(ts == null)
             return
-        for(i in 0 until ts?.tickCount!!){
+        for(i in 0 until ts.tickCount){
             if(i < sod.timeSeries.tickCount)
                 this.getEntryData(Overlay.Kind.D_Stoch_Oscill_SMA_Timeframe).add(Entry(i.toFloat(), sod.getValue(i).toDouble().toFloat()))
             if(i < sok.timeSeries.tickCount)
@@ -668,7 +683,7 @@ class TechnicalAnalysis {
                 timeFrame = OverlayAdapter.getTimeframe(AroonOsci).toInt()
             }
         }
-        var aroonOscillatorIndicator = AroonOscillatorIndicator(this.ts, timeFrame)
+        val aroonOscillatorIndicator = AroonOscillatorIndicator(this.ts, timeFrame)
         if(this.ts == null)
             return
         for (j in 0 until this.ts?.tickCount!!) {
@@ -726,8 +741,8 @@ class TechnicalAnalysis {
             }
         }
 
-        var aroonUpIndicatorData = AroonUpIndicator(this.ts, timeFrame)
-        var aroonDownIndicatorData = AroonDownIndicator(this.ts, timeFrame)
+        val aroonUpIndicatorData = AroonUpIndicator(this.ts, timeFrame)
+        val aroonDownIndicatorData = AroonDownIndicator(this.ts, timeFrame)
         for (j in 0 until closePrice.timeSeries.tickCount) {
             this.getEntryData(Overlay.Kind.D_AroonUp).add(Entry(j.toFloat(),aroonUpIndicatorData.getValue(j).toDouble().toFloat()))
             this.getEntryData(Overlay.Kind.D_AroonDown).add(Entry(j.toFloat(),aroonDownIndicatorData.getValue(j).toDouble().toFloat()))
