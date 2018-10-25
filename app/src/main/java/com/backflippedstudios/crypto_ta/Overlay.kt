@@ -978,28 +978,6 @@ data class Overlay(val context: Context, val kind: Kind){
 
         CandleStick,
 
-        AroonUpDown,
-        D_ArronUpDown_Timeframe,
-        D_AroonUp,
-        D_AroonDown,
-
-        AroonOsci,
-
-        RSI,
-        D_RSI_Timeframe,
-
-        DPO,
-        D_DPO_Timeframe,
-
-        Stoch_Oscill,
-        D_Stoch_Oscill_K_Timeframe,
-        D_Stoch_Oscill_SMA_Timeframe,
-
-        PPO,
-        D_PPO_ShortTerm,
-        D_PPO_LongTerm,
-        D_PPO_EMA,
-
         Accumulation_Distribution,
 
         Awesome_Oscillator,
@@ -1007,9 +985,16 @@ data class Overlay(val context: Context, val kind: Kind){
         D_AO_Timeframe2,
         D_AO_COLOR,
 
-        Rate_Of_Change,
-        D_ROC_Timeframe,
-        D_ROC_COLOR,
+        AroonUpDown,
+        D_ArronUpDown_Timeframe,
+        D_AroonUp,
+        D_AroonDown,
+
+        AroonOsci,
+
+        Chaikin_Money_Flow,
+        D_CMF_Timeframe,
+        D_CMF_COLOR,
 
         Chande_Momentum_Oscillator,
         D_CMO_Timeframe,
@@ -1021,6 +1006,25 @@ data class Overlay(val context: Context, val kind: Kind){
         D_CC_WMA_Timeframe,
         D_CC_COLOR,
 
+        DPO,
+        D_DPO_Timeframe,
+
+        PPO,
+        D_PPO_ShortTerm,
+        D_PPO_LongTerm,
+        D_PPO_EMA,
+
+        Stoch_Oscill,
+        D_Stoch_Oscill_K_Timeframe,
+        D_Stoch_Oscill_SMA_Timeframe,
+
+        Rate_Of_Change,
+        D_ROC_Timeframe,
+        D_ROC_COLOR,
+
+        RSI,
+        D_RSI_Timeframe,
+
         Williams__R,
         D_WR_Timeframe,
         D_WR_COLOR,
@@ -1028,10 +1032,6 @@ data class Overlay(val context: Context, val kind: Kind){
         Ulcer_Index,
         D_UI_Timeframe,
         D_UI_COLOR,
-
-        Chaikin_Money_Flow,
-        D_CMF_Timeframe,
-        D_CMF_COLOR,
 
         Positive_Volume,
         D_PV_COLOR,
@@ -1060,30 +1060,20 @@ data class Overlay(val context: Context, val kind: Kind){
         D_BB_Upper,
         D_BB_Lower,
 
-        Keltner_Channel,
-        D_KC_Timeframe,
-        D_KC_Ratio,
-        D_KC_Middle,
-        D_KC_Upper,
-        D_KC_Lower,
-
-        Simple_Moving_Avg,
-        D_SMA_Timeframe,
-        D_SMA_COLOR,
+        Chandelier_Exit,
+        D_CE_Timeframe,
+        D_CE_Ratio,
+        D_CE_Color,
 
         Exponential_MA,
         D_EMA_Timeframe,
         D_EMA_COLOR,
 
-        Parabolic_SAR,
-        D_P_SAR_ACC_FAC,
-        D_P_SAR_MAX_ACC,
-        D_P_SAR_COLOR,
+        Exponential_MA_Ribbon,
 
-        Chandelier_Exit,
-        D_CE_Timeframe,
-        D_CE_Ratio,
-        D_CE_Color,
+        Hull_Moving_Average,
+        D_HMA_TimeFrame,
+        D_HMA_COLOR,
 
         Ichimoku_Cloud,
         D_Ich_Cloud_Conversion,
@@ -1093,18 +1083,20 @@ data class Overlay(val context: Context, val kind: Kind){
         D_Ich_Cloud_Lead_A,
         D_Ich_Cloud_Lead_B,
 
-        ZigZag,
-        D_ZigZag_Timeframe,
-        D_ZigZag_COLOR,
+        Kaufman_Adaptive_MA,
+        D_KAMA_Timeframe_Ratio,
+        D_KAMA_Timeframe_Fast,
+        D_KAMA_Timeframe_Slow,
+        D_KAMA_COLOR,
 
-        Hull_Moving_Average,
-        D_HMA_TimeFrame,
-        D_HMA_COLOR,
+        Keltner_Channel,
+        D_KC_Timeframe,
+        D_KC_Ratio,
+        D_KC_Middle,
+        D_KC_Upper,
+        D_KC_Lower,
 
-        Zero_Lag_Moving_Average,
-        D_ZLEMA_TimeFrame,
-        D_ZLEMA_COLOR,
-
+        //NOTE - VWAP needs to be before MVWAP
         Volume_Weighted_Average_Price,
         D_VWAP_TimeFrame,
         D_VWAP_COLOR,
@@ -1113,13 +1105,23 @@ data class Overlay(val context: Context, val kind: Kind){
         D_MVWAP_TimeFrame,
         D_MVWAP_COLOR,
 
-        Kaufman_Adaptive_MA,
-        D_KAMA_Timeframe_Ratio,
-        D_KAMA_Timeframe_Fast,
-        D_KAMA_Timeframe_Slow,
-        D_KAMA_COLOR,
+        Parabolic_SAR,
+        D_P_SAR_ACC_FAC,
+        D_P_SAR_MAX_ACC,
+        D_P_SAR_COLOR,
 
-        Exponential_MA_Ribbon,
+        Simple_Moving_Avg,
+        D_SMA_Timeframe,
+        D_SMA_COLOR,
+
+
+        ZigZag,
+        D_ZigZag_Timeframe,
+        D_ZigZag_COLOR,
+
+        Zero_Lag_Moving_Average,
+        D_ZLEMA_TimeFrame,
+        D_ZLEMA_COLOR,
 
         Notifications,
 

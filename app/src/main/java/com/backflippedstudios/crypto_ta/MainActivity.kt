@@ -1108,6 +1108,14 @@ class MainActivity : AppCompatActivity() {
                     data.all_ta[position] = TechnicalAnalysis(ticks,
                             TechnicalAnalysis.TAData(data.all_ta[position].getCandlestickData(Overlay.Kind.CandleStick),
                                     Overlay.Kind.CandleStick))
+
+                    println("TA Finished")
+                    runOnUiThread {
+                        data.endTA = false
+                        data.runningTA = false
+                        updateIndicatorTitle()
+                    }
+
                     AsyncTask.execute {
                         data.endTA = false
                         data.runningTA = true
@@ -1117,17 +1125,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                println("TA Finished")
-                runOnUiThread {
-                    updateIndicatorTitle()
-                }
+
             }
-        }
-
-
-        runOnUiThread {
-            println("TA Done, time to update recycler")
-            updateIndicatorTitle()
+        }else {
+            runOnUiThread {
+                println("TA Done, time to update recycler")
+                updateIndicatorTitle()
+            }
         }
 
         println("{updatedGraph} Chart list size: " + data.chartList.size)

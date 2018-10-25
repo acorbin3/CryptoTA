@@ -6,6 +6,11 @@ package com.backflippedstudios.crypto_ta
 class todoClass {
 
 
+    //DONE 10/24/2018 - Fixed loading menu bug
+    // TODO - when background indicators are loading and user attempts to turn on, notify still loading
+    // TODO - BUG - When PPO long term is greater than short term this will throw an error
+//    java.lang.IllegalArgumentException: Long term period count must be greater than short term period count
+//    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
 
     //TODO: Indicators I am interested in adding -
     //      TODO: , Fisher Transform,

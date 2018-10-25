@@ -1,6 +1,6 @@
 package com.backflippedstudios.crypto_ta
 
-class ChartStatusData(var status: Status, var type: Type, var kind: Overlay.Kind){
+class ChartStatusData(var status: Status, var type: Type, var kind: Overlay.Kind, var recalculate: Boolean = false){
     enum class Status{
         LOADING,
         INITIAL_LOAD,

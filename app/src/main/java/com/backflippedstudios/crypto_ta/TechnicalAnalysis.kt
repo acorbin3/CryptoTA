@@ -56,7 +56,7 @@ class TechnicalAnalysis {
     }
 
     fun initilize(ticksDataArray: ArrayList<Tick>, candleStickData: TAData = TAData(ArrayList<Entry>(),None)) {
-        for (kind in values()) {
+        for (kind in Overlay.Kind.values()) {
             if (kind == Volume_Bars) {
                 data[kind] = TAData(ArrayList<BarEntry>(), kind)
             } else if (kind == Exponential_MA_Ribbon) {
@@ -120,15 +120,19 @@ class TechnicalAnalysis {
     fun updateNonSelectedItems(){
         try {
             for (overlay in OverlayAdapter.data.list) {
-                if(MainActivity.data.endTA)
+                if(MainActivity.data.endTA) {
+                    println("Ending non selected items recalculation")
                     break
-                if (overlay.selected) {
+                }
+                // Possible enhancement that the main kind
+                if (overlay.selected && MainActivity.data.all_ta[MainActivity.data.saved_time_period].getData(overlay.kind).size > 0) {
+                    println("Skipping ${overlay.kind}")
                     continue
                 }
                 recalculateData(overlay.kind)
             }
         }catch (e: Exception){
-
+            println("Crash ${e.localizedMessage}")
         }
     }
 
@@ -149,6 +153,7 @@ class TechnicalAnalysis {
         if(this.ts == null || this.ts?.isEmpty == null || this.ts?.tickCount == 0 || this.closePrice.timeSeries.isEmpty) {
             return
         }
+        println("Recalculating $overlayKind")
 
         when (overlayKind) {
             Volume_Bars -> updateVolumeBarData()
@@ -287,6 +292,8 @@ class TechnicalAnalysis {
     }
 
     private fun updateMVWAP(timeFrame: Int){
+        this.getEntryData(Volume_Weighted_Average_Price).clear()
+        updateVWAP(timeFrame)
         this.getEntryData(Moving_Volume_Weighted_Average_Price).clear()
         val data = MVWAPIndicator(this.vwapIndicator,timeFrame)
         for (i in 0 until this.ts?.tickCount!!) {

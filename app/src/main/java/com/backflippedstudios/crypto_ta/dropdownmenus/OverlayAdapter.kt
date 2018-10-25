@@ -452,6 +452,22 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                             finished = true
 
                         }
+                        //Data not available and background items still loading, notify user
+                        if (!finished) {
+                            var indicatorData = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getData(kind)
+                            var count = 0
+                            if(indicatorData.isNotEmpty()){
+                                count = indicatorData[0].size
+                            }
+                            if(isChecked && count == 0){
+                                val toast = Toast.makeText(lContext, "Still calculating data", Toast.LENGTH_LONG)
+                                toast.show()
+
+                                switchView.isChecked = false
+                                finished = true
+                            }
+                        }
+
                         if (!finished) {
 
                             data.list[getPosition].selected = isChecked
@@ -504,7 +520,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                     }
                                 }
                                 if (!data.list[getPosition].separateChart)
-                                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART, data.list[getPosition].kind)
+                                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART, data.list[getPosition].kind )
                                 MainActivity.data.rvCharts.adapter?.notifyDataSetChanged()
                                 //Reset legends
                                 for ((key, chart) in ChartListAdapter.data.charts) {
@@ -970,6 +986,17 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             if (chart.type == type) {
                 chart.status = status
                 chart.kind = kind
+            }
+        }
+
+    }
+
+    private fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type, kind: Overlay.Kind, recalculate: Boolean) {
+        for (chart in MainActivity.data.chartList) {
+            if (chart.type == type) {
+                chart.status = status
+                chart.kind = kind
+                chart.recalculate = recalculate
             }
         }
 

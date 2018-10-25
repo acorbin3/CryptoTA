@@ -152,7 +152,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
             ChartStatusData.Status.UPDATE_OVERLAYS -> {
                 println("Updating Overlays from ChartList Adapter")
                 combinedViewHolder.chart.fillInbetweenLines = true
-                MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
+//                MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
                 ChartStyle(context).updateOverlays(
                         OverlayAdapter.data.list,
                         MainActivity.data.all_ta[MainActivity.data.saved_time_period],
