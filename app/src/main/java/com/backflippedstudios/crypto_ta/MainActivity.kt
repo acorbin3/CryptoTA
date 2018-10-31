@@ -214,6 +214,8 @@ class MainActivity : AppCompatActivity() {
                         spinnerTimeFirstRun = false
                         return
                     }
+
+                    if (data.runningTA) data.endTA = true
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     editor.putInt(TIME_PERIOD, position)
@@ -583,6 +585,7 @@ class MainActivity : AppCompatActivity() {
             swipe_to_refresh_layout.setOnRefreshListener {
                 println("Updating Graph")
                 if (!data.loading) {
+                    data.endTA = true
                     updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
                 }
             }
@@ -1105,24 +1108,30 @@ class MainActivity : AppCompatActivity() {
                     data.all_ta[position] = TechnicalAnalysis(ticks,
                             TechnicalAnalysis.TAData(data.all_ta[position].getCandlestickData(Overlay.Kind.CandleStick),
                                     Overlay.Kind.CandleStick))
+
+                    println("TA Finished")
+                    runOnUiThread {
+                        data.endTA = false
+                        data.runningTA = false
+                        updateIndicatorTitle()
+                    }
+
                     AsyncTask.execute {
+                        data.endTA = false
+                        data.runningTA = true
                         data.all_ta[position].updateNonSelectedItems()
+                        data.endTA = false
+                        data.runningTA = false
                     }
                 }
-                data.endTA = false
 
-                data.runningTA = false
-                println("TA Finished")
-                runOnUiThread {
-                    updateIndicatorTitle()
-                }
+
             }
-        }
-
-
-        runOnUiThread {
-            println("TA Done, time to update recycler")
-            updateIndicatorTitle()
+        }else {
+            runOnUiThread {
+                println("TA Done, time to update recycler")
+                updateIndicatorTitle()
+            }
         }
 
         println("{updatedGraph} Chart list size: " + data.chartList.size)
@@ -1143,6 +1152,7 @@ class MainActivity : AppCompatActivity() {
             spinner_time_period.isEnabled = true
             swipe_to_refresh_layout.isRefreshing = false
         }
+
     }
 
     private fun isInternetOn(): Boolean {

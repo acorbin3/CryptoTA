@@ -136,7 +136,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
             case DAY: // return previous day
                 int prevCalendarDay =  tick.getEndTime().minusDays(1).getDayOfYear();
                 // skip weekend and holidays:
-                while (getTimeSeries().getTick(indexOfPreviousTick).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousTick > 0) {
+                while (indexOfPreviousTick > 0 && getTimeSeries().getTick(indexOfPreviousTick).getEndTime().getDayOfYear() != prevCalendarDay) {
                     prevCalendarDay--;
                 }
                 return prevCalendarDay;

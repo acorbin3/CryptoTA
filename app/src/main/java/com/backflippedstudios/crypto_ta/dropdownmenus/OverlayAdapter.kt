@@ -67,6 +67,15 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             return 0.0
         }
 
+        fun getK(kind: Overlay.Kind): Int {
+            for (overlay in data.list) {
+                if (overlay.kind == kind) {
+                    return overlay.values[overlay.k].value.toInt()
+                }
+            }
+            return 0
+        }
+
         fun getTimeframeFast(kind: Overlay.Kind): Double {
             for (overlay in data.list) {
                 if (overlay.kind == kind) {
@@ -236,6 +245,22 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             } else {
                 data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.selectedLegendLabel
             }
+        }
+        fun getLegendText(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): String? {
+            return if (kind == parentKind) {
+                data.all[kind]?.allIndicatorInfo?.get(0)?.label
+
+            } else {
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.label
+            }
+        }
+
+        fun isParentSelected(parentKind: Overlay.Kind): Boolean{
+            return data.all[parentKind]?.selected!!
+        }
+
+        fun isParentSeparateChart(parentKind: Overlay.Kind): Boolean{
+            return data.all[parentKind]?.separateChart!!
         }
 
     }
@@ -440,6 +465,22 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                             finished = true
 
                         }
+                        //Data not available and background items still loading, notify user
+                        if (!finished) {
+                            var indicatorData = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getData(kind)
+                            var count = 0
+                            if(indicatorData.isNotEmpty()){
+                                count = indicatorData[0].size
+                            }
+                            if(isChecked && count == 0){
+                                val toast = Toast.makeText(lContext, "Still calculating data", Toast.LENGTH_LONG)
+                                toast.show()
+
+                                switchView.isChecked = false
+                                finished = true
+                            }
+                        }
+
                         if (!finished) {
 
                             data.list[getPosition].selected = isChecked
@@ -471,7 +512,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                         removeChartItem(data.list[getPosition].kind)
                                     } else {
                                         MainActivity.data.chartList.add(MainActivity.data.chartList.size,
-                                                ChartStatusData(ChartStatusData.Status.UPDATE_CHART,
+                                                ChartStatusData(ChartStatusData.Status.TOGGLE_CHART,
                                                         ChartStatusData.Type.SEPARATE_CHART, data.list[getPosition].kind))
                                     }
                                 }
@@ -488,11 +529,11 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                 //Ensuring all seperate charts get reloaded
                                 for (item in data.list) {
                                     if (item.selected && item.separateChart) {
-                                        updateChartStatus(ChartStatusData.Status.UPDATE_CHART, item.kind)
+                                        updateChartStatus(ChartStatusData.Status.TOGGLE_CHART, item.kind)
                                     }
                                 }
                                 if (!data.list[getPosition].separateChart)
-                                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART, data.list[getPosition].kind)
+                                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART, data.list[getPosition].kind )
                                 MainActivity.data.rvCharts.adapter?.notifyDataSetChanged()
                                 //Reset legends
                                 for ((key, chart) in ChartListAdapter.data.charts) {
@@ -634,7 +675,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                     if (!data.all[data.list[pos].kindData.parentKind]?.separateChart!!) {
                                         updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
                                     } else {
-                                        updateChartStatus(ChartStatusData.Status.UPDATE_CHART, data.list[pos].kindData.parentKind)
+                                        updateChartStatus(ChartStatusData.Status.TOGGLE_CHART, data.list[pos].kindData.parentKind)
                                     }
                                     val activity = lContext as Activity
                                     activity.runOnUiThread {
@@ -646,18 +687,22 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
 
                                 builder.setNegativeButton("Cancel", DialogInterface.OnClickListener { dialogInterface, i -> dialogInterface.dismiss() })
 
-                                builder.setNeutralButton("Reset Color", DialogInterface.OnClickListener { dialogInterface, i ->
+                                builder.setNeutralButton("Reset Color") { dialogInterface, i ->
                                     val pos = vh.colorPicker.tag as Int
                                     val defaultColor = getDefaultColor(pos)
                                     setColor(pos, defaultColor)
                                     builder.colorPickerView.setSavedColor(defaultColor)
-                                    updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
+                                    if (!data.all[data.list[pos].kindData.parentKind]?.separateChart!!) {
+                                        updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
+                                    } else {
+                                        updateChartStatus(ChartStatusData.Status.TOGGLE_CHART, data.list[pos].kindData.parentKind)
+                                    }
                                     val activity = lContext as Activity
                                     activity.runOnUiThread {
                                         MainActivity.data.rvCharts.adapter?.notifyDataSetChanged()
                                         MainActivity.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(pos)
                                     }
-                                })
+                                }
                                 val alertDialog: AlertDialog = builder.create()
                                 alertDialog.show()
                             }
@@ -883,11 +928,10 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
 
                         val startTime: Long = System.currentTimeMillis()
                         println("Running TA")
-//                        if (data.list[updateIndex].kindData.parentKind == Overlay.Kind.Ichimoku_Cloud) {
-//                            MainActivity.data.all_ta[MainActivity.data.saved_time_period].updateSeparateCharts()
-//                        } else {
-                            MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(data.list[updateIndex].kindData.parentKind)
-//                        }
+
+
+
+                        MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(data.list[updateIndex].kindData.parentKind)
                         val endTime: Long = System.currentTimeMillis()
                         println("updateOverlay took: " + (endTime - startTime))
                         //Update chart
@@ -958,6 +1002,17 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             if (chart.type == type) {
                 chart.status = status
                 chart.kind = kind
+            }
+        }
+
+    }
+
+    private fun updateChartStatus(status: ChartStatusData.Status, type: ChartStatusData.Type, kind: Overlay.Kind, recalculate: Boolean) {
+        for (chart in MainActivity.data.chartList) {
+            if (chart.type == type) {
+                chart.status = status
+                chart.kind = kind
+                chart.recalculate = recalculate
             }
         }
 
