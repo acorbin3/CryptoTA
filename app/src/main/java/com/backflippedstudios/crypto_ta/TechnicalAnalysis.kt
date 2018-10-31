@@ -2,7 +2,6 @@ package com.backflippedstudios.crypto_ta
 
 import com.backflippedstudios.crypto_ta.Overlay.Kind.*
 import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
-import com.facebook.R
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.data.CandleEntry
 import com.github.mikephil.charting.data.Entry
@@ -11,20 +10,18 @@ import org.ta4j.core.Tick
 import org.ta4j.core.TimeSeries
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator
-import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator
-import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator
-import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator
 import java.util.ArrayList
 import org.ta4j.core.indicators.keltner.KeltnerChannelMiddleIndicator
 import org.ta4j.core.Decimal
 import org.ta4j.core.indicators.*
+import org.ta4j.core.indicators.adx.AverageDirectionalMovementIndicator
+import org.ta4j.core.indicators.adx.DirectionalMovementMinusIndicator
+import org.ta4j.core.indicators.adx.DirectionalMovementPlusIndicator
+import org.ta4j.core.indicators.bollinger.*
 import org.ta4j.core.indicators.ichimoku.*
 import org.ta4j.core.indicators.keltner.KeltnerChannelLowerIndicator
 import org.ta4j.core.indicators.keltner.KeltnerChannelUpperIndicator
-import org.ta4j.core.indicators.pivotpoints.PivotLevel
-import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator
-import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator
-import org.ta4j.core.indicators.pivotpoints.TimeLevel
+import org.ta4j.core.indicators.pivotpoints.*
 import org.ta4j.core.indicators.volume.*
 import kotlin.math.absoluteValue
 
@@ -41,6 +38,9 @@ class TechnicalAnalysis {
 
     var ts : TimeSeries? = null
     lateinit var closePrice: ClosePriceIndicator
+    lateinit var bbsUpperIndicator: BollingerBandsUpperIndicator
+    lateinit var bbLowerIndicator: BollingerBandsLowerIndicator
+    lateinit var bbMiddleIndicator: BollingerBandsMiddleIndicator
     lateinit var vwapIndicator: VWAPIndicator
     var loaded: Boolean = false
     var data : HashMap<Overlay.Kind, TAData> = HashMap()
@@ -132,7 +132,7 @@ class TechnicalAnalysis {
                 recalculateData(overlay.kind)
             }
         }catch (e: Exception){
-            println("Crash ${e.localizedMessage}")
+            println("Crash ${e.localizedMessage} ${e.stackTrace}")
         }
     }
 
@@ -167,14 +167,17 @@ class TechnicalAnalysis {
                     OverlayAdapter.getLongTerm(Overlay.Kind.PPO).toInt(),
                     OverlayAdapter.getPPOEMA(Overlay.Kind.PPO).toInt())
             Bollinger_Bands -> updateBollingerBandsData(this.closePrice, OverlayAdapter.getTimeframe(Bollinger_Bands).toInt())
+            Bollinger_Band_Percent_B -> updateBBPercentB(OverlayAdapter.getTimeframe(overlayKind).toInt(),OverlayAdapter.getK(overlayKind))
             Keltner_Channel -> updatekeltnerChannel(this.closePrice, OverlayAdapter.getTimeframe(Keltner_Channel).toInt(),
                     OverlayAdapter.getRatio(Keltner_Channel).toInt())
             Simple_Moving_Avg -> updateSMA(this.closePrice, OverlayAdapter.getTimeframe(Simple_Moving_Avg).toInt())
             Exponential_MA -> updateEMA(this.closePrice, OverlayAdapter.getTimeframe(Exponential_MA).toInt())
             Parabolic_SAR -> updateParabolicSAR(OverlayAdapter.getAccFactor(Parabolic_SAR),
                     OverlayAdapter.getMaxAcc(Parabolic_SAR))
-            Chandelier_Exit -> updateChandelierExit(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit).toInt(),
-                    Decimal.valueOf(OverlayAdapter.getRatio(Parabolic_SAR)))
+            Chandelier_Exit_Long -> updateChandelierExitLong(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit_Long).toInt(),
+                    Decimal.valueOf(OverlayAdapter.getRatio(D_CEL_Ratio)))
+            Chandelier_Exit_Short -> updateChandelierExitShort(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit_Short).toInt(),
+                    Decimal.valueOf(OverlayAdapter.getRatio(D_CES_Ratio)))
             Ichimoku_Cloud -> updateIchimokuCloud(OverlayAdapter.getConversionPeriod(Ichimoku_Cloud).toInt(),
                     OverlayAdapter.getBase(Ichimoku_Cloud).toInt(),
                     OverlayAdapter.getLeadingPeriod(Ichimoku_Cloud).toInt(),
@@ -197,20 +200,48 @@ class TechnicalAnalysis {
             Positive_Volume -> updatePositiveVolume()
             Negative_Volume -> updateNegativeVolume()
             On_Balance_Volume -> updateOnBalanceVolume()
-            Piviot_Point -> {
-                var timeLevel: TimeLevel
-                if(MainActivity.data.saved_time_period < 6){
-                    timeLevel = TimeLevel.DAY
+            Pivot_Point -> {
+                val timeLevel: TimeLevel = if(MainActivity.data.saved_time_period < 6){
+                    TimeLevel.DAY
                 }else{
-                    timeLevel = TimeLevel.WEEK
+                    TimeLevel.WEEK
                 }
-                updatePiviotPoints(timeLevel)
+                updatePivotPoints(timeLevel)
             }
+            DeMark_Pivot_Point ->{
+                val timeLevel: TimeLevel = if(MainActivity.data.saved_time_period < 6){
+                    TimeLevel.DAY
+                }else{
+                    TimeLevel.WEEK
+                }
+                updateDeMarkPivotPoint(timeLevel)
+
+            }
+            Fibonacci_Reversal_Resistance ->{
+                val timeLevel: TimeLevel = if(MainActivity.data.saved_time_period < 6){
+                    TimeLevel.DAY
+                }else{
+                    TimeLevel.WEEK
+                }
+                updateFibReversalResistance(timeLevel)
+            }
+            Fibonacci_Reversal_Support ->{
+                val timeLevel: TimeLevel = if(MainActivity.data.saved_time_period < 6){
+                    TimeLevel.DAY
+                }else{
+                    TimeLevel.WEEK
+                }
+                updateFibReversalSupport(timeLevel)
+            }
+            CCI -> updateCCI(OverlayAdapter.getTimeframe(overlayKind).toInt())
+            Fisher_Transform-> updateFisherTransform(OverlayAdapter.getTimeframe(overlayKind).toInt())
+            Double_EMA -> updateDoubleEMA(OverlayAdapter.getTimeframe(overlayKind).toInt())
             Triple_EMA -> updateTripleEMA(OverlayAdapter.getTimeframe(overlayKind).toInt())
             Kaufman_Adaptive_MA -> updateKAMA(OverlayAdapter.getTimeframe(Kaufman_Adaptive_MA).toInt(),
                     OverlayAdapter.getTimeframeFast(Kaufman_Adaptive_MA).toInt(),
                     OverlayAdapter.getTimeframeSlow(Kaufman_Adaptive_MA).toInt())
             Exponential_MA_Ribbon -> updateEMARibbon()
+            Average_Directional_Index -> updateAvgDirectionalMovement(OverlayAdapter.getTimeframe(overlayKind).toInt())
         }
 
         //Add extra padding for seperate charts when IchCloud is on
@@ -428,8 +459,8 @@ class TechnicalAnalysis {
         }
     }
 
-    private fun updatePiviotPoints(timeLevel: TimeLevel){
-        val kind = Piviot_Point
+    private fun updatePivotPoints(timeLevel: TimeLevel){
+        val kind = Pivot_Point
         this.getEntryData(kind).clear()
         this.getEntryData(D_PP_R1).clear()
         this.getEntryData(D_PP_R2).clear()
@@ -472,7 +503,151 @@ class TechnicalAnalysis {
         }
     }
 
+    private fun updateDeMarkPivotPoint(timeLevel: TimeLevel) {
+        val kind = DeMark_Pivot_Point
+        this.getEntryData(kind).clear()
+        this.getEntryData(D_DMPP_Resistance).clear()
+        this.getEntryData(D_DMPP_Support).clear()
+        val data = DeMarkPivotPointIndicator(this.ts, timeLevel)
+        val dataF1 = DeMarkReversalIndicator(data, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE)
+        val dataF2 = DeMarkReversalIndicator(data, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT)
 
+        for (i in 0 until this.ts?.tickCount!!) {
+            if (data.timeSeries.tickCount > i) {
+                if (i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+                if (i < dataF1.timeSeries.tickCount)
+                    this.getEntryData(D_DMPP_Resistance).add(Entry(i.toFloat(), dataF1.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF2.timeSeries.tickCount)
+                    this.getEntryData(D_DMPP_Support).add(Entry(i.toFloat(), dataF2.getValue(i).toDouble().toFloat()))
+            }
+        }
+    }
+
+    private fun updateFisherTransform(timeFrame: Int) {
+        val kind = Fisher_Transform
+        this.getEntryData(kind).clear()
+        val data = FisherIndicator(this.closePrice, timeFrame)
+
+        for (i in 0 until this.ts?.tickCount!!) {
+            if (data.timeSeries.tickCount > i) {
+                if (i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+            }
+        }
+    }
+
+    private fun updateCCI(timeFrame: Int) {
+        val kind = CCI
+        this.getEntryData(kind).clear()
+        val data = CCIIndicator(this.ts, timeFrame)
+
+        for (i in 0 until this.ts?.tickCount!!) {
+            if (data.timeSeries.tickCount > i) {
+                if (i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+            }
+        }
+    }
+
+    private fun updateFibReversalSupport(timeLevel: TimeLevel) {
+        val kind = Fibonacci_Reversal_Support
+        this.getEntryData(kind).clear()
+        this.getEntryData(D_FRS_1).clear()
+        this.getEntryData(D_FRS_2).clear()
+        this.getEntryData(D_FRS_3).clear()
+        this.getEntryData(D_FRS_4).clear()
+        val data = PivotPointIndicator(this.ts, timeLevel)
+        val dataF1 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor4, FibonacciReversalIndicator.FibReversalTyp.SUPPORT)
+        val dataF2 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor1, FibonacciReversalIndicator.FibReversalTyp.SUPPORT)
+        val dataF3 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor2, FibonacciReversalIndicator.FibReversalTyp.SUPPORT)
+        val dataF4 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor3, FibonacciReversalIndicator.FibReversalTyp.SUPPORT)
+
+        for (i in 0 until this.ts?.tickCount!!) {
+            if (data.timeSeries.tickCount > i) {
+                if (i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+                if (i < dataF1.timeSeries.tickCount)
+                    this.getEntryData(D_FRS_1).add(Entry(i.toFloat(), dataF1.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF2.timeSeries.tickCount)
+                    this.getEntryData(D_FRS_2).add(Entry(i.toFloat(), dataF2.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF3.timeSeries.tickCount)
+                    this.getEntryData(D_FRS_3).add(Entry(i.toFloat(), dataF3.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF4.timeSeries.tickCount)
+                    this.getEntryData(D_FRS_4).add(Entry(i.toFloat(), dataF4.getValue(i).toDouble().toFloat()))
+            }
+        }
+    }
+
+    private fun updateAvgDirectionalMovement(timeFrame: Int) {
+        val kind = Average_Directional_Index
+        this.getEntryData(kind).clear()
+        this.getEntryData(D_ADX_Minus).clear()
+        this.getEntryData(D_ADX_Plus).clear()
+        val data = AverageDirectionalMovementIndicator(this.ts,timeFrame)
+        val dataMinus = DirectionalMovementMinusIndicator(this.ts,timeFrame)
+        val dataPlus = DirectionalMovementPlusIndicator(this.ts,timeFrame)
+
+        for (i in 0 until this.ts?.tickCount!!) {
+            if (data.timeSeries.tickCount > i) {
+                if (i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+                if (i < dataMinus.timeSeries.tickCount)
+                    this.getEntryData(D_ADX_Minus).add(Entry(i.toFloat(), dataMinus.getValue(i).toDouble().toFloat()))
+
+                if (i < dataPlus.timeSeries.tickCount)
+                    this.getEntryData(D_ADX_Plus).add(Entry(i.toFloat(), dataPlus.getValue(i).toDouble().toFloat()))
+            }
+        }
+    }
+
+    private fun updateFibReversalResistance(timeLevel: TimeLevel) {
+        val kind = Fibonacci_Reversal_Resistance
+        this.getEntryData(kind).clear()
+        this.getEntryData(D_FRR_1).clear()
+        this.getEntryData(D_FRR_2).clear()
+        this.getEntryData(D_FRR_3).clear()
+        this.getEntryData(D_FRR_4).clear()
+        val data = PivotPointIndicator(this.ts, timeLevel)
+        val dataF1 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor4, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE)
+        val dataF2 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor1, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE)
+        val dataF3 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor2, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE)
+        val dataF4 = FibonacciReversalIndicator(data, FibonacciReversalIndicator.FibonacciFactor.Factor3, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE)
+
+        for (i in 0 until this.ts?.tickCount!!) {
+            if (data.timeSeries.tickCount > i) {
+                if (i < data.timeSeries.tickCount) {
+                    val value = data.getValue(i).toDouble().toFloat()
+                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
+                }
+                if (i < dataF1.timeSeries.tickCount)
+                    this.getEntryData(D_FRR_1).add(Entry(i.toFloat(), dataF1.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF2.timeSeries.tickCount)
+                    this.getEntryData(D_FRR_2).add(Entry(i.toFloat(), dataF2.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF3.timeSeries.tickCount)
+                    this.getEntryData(D_FRR_3).add(Entry(i.toFloat(), dataF3.getValue(i).toDouble().toFloat()))
+
+                if (i < dataF4.timeSeries.tickCount)
+                    this.getEntryData(D_FRR_4).add(Entry(i.toFloat(), dataF4.getValue(i).toDouble().toFloat()))
+            }
+        }
+    }
 
     private fun updateTripleEMA(timeFrame: Int){
         try {
@@ -666,19 +841,53 @@ class TechnicalAnalysis {
         this.getEntryData(D_BB_Lower).clear()
         val sma = SMAIndicator(closePrice, timeFrame)
 
-        val bbmSMA = BollingerBandsMiddleIndicator(sma)
+        this.bbMiddleIndicator = BollingerBandsMiddleIndicator(sma)
         val standardDeviation = StandardDeviationIndicator(closePrice, timeFrame)
-        val bbuSMA = BollingerBandsUpperIndicator(bbmSMA, standardDeviation)
-        val bblSMA = BollingerBandsLowerIndicator(bbmSMA, standardDeviation)
+        this.bbsUpperIndicator = BollingerBandsUpperIndicator(this.bbMiddleIndicator, standardDeviation)
+        this.bbLowerIndicator = BollingerBandsLowerIndicator(this.bbMiddleIndicator, standardDeviation)
 
         //Populate data for Upper, middle and lower
         for (j in 0 until closePrice.timeSeries.tickCount) {
-            if(j < bbuSMA.timeSeries.tickCount)
-                this.getEntryData(D_BB_Upper).add(Entry(j.toFloat(), bbuSMA.getValue(j).toDouble().toFloat()))
-            if(j < bbmSMA.timeSeries.tickCount)
-                this.getEntryData(D_BB_Middle).add(Entry(j.toFloat(), bbmSMA.getValue(j).toDouble().toFloat()))
-            if(j < bblSMA.timeSeries.tickCount)
-                this.getEntryData(D_BB_Lower).add(Entry(j.toFloat(), bblSMA.getValue(j).toDouble().toFloat()))
+            if(j < bbsUpperIndicator.timeSeries.tickCount)
+                this.getEntryData(D_BB_Upper).add(Entry(j.toFloat(), bbsUpperIndicator.getValue(j).toDouble().toFloat()))
+            if(j < this.bbMiddleIndicator.timeSeries.tickCount)
+                this.getEntryData(D_BB_Middle).add(Entry(j.toFloat(), this.bbMiddleIndicator.getValue(j).toDouble().toFloat()))
+            if(j < bbLowerIndicator.timeSeries.tickCount)
+                this.getEntryData(D_BB_Lower).add(Entry(j.toFloat(), bbLowerIndicator.getValue(j).toDouble().toFloat()))
+        }
+        updateBBWidth()
+    }
+
+    private fun updateDoubleEMA(timeFrame: Int){
+        val kind = Double_EMA
+        this.getEntryData(kind).clear()
+        val _data = DoubleEMAIndicator(this.closePrice,timeFrame)
+
+        for (j in 0 until closePrice.timeSeries.tickCount) {
+            if(j < _data.timeSeries.tickCount)
+                this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
+        }
+    }
+
+    private fun updateBBPercentB(timeFrame: Int, k: Int){
+        val kind = Bollinger_Band_Percent_B
+        this.getEntryData(kind).clear()
+        val _data = PercentBIndicator(this.closePrice,timeFrame,Decimal.valueOf(k))
+
+        for (j in 0 until closePrice.timeSeries.tickCount) {
+            if(j < _data.timeSeries.tickCount)
+                this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
+        }
+    }
+
+    private fun updateBBWidth(){
+        val kind = Bollinger_Band_Width
+        this.getEntryData(kind).clear()
+        val _data = BollingerBandWidthIndicator(bbsUpperIndicator,bbMiddleIndicator,bbLowerIndicator)
+
+        for (j in 0 until closePrice.timeSeries.tickCount) {
+            if(j < _data.timeSeries.tickCount)
+                this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
         }
     }
 
@@ -852,11 +1061,18 @@ class TechnicalAnalysis {
         }
     }
 
-    private fun updateChandelierExit(timeSeries: TimeSeries?,timeFrame: Int, ratio: Decimal) {
-        this.getEntryData(Chandelier_Exit).clear()
+    private fun updateChandelierExitLong(timeSeries: TimeSeries?, timeFrame: Int, ratio: Decimal) {
+        this.getEntryData(Chandelier_Exit_Long).clear()
         var chadExitData = ChandelierExitLongIndicator(timeSeries, timeFrame,ratio)
         for (i in 0 until closePrice.timeSeries.tickCount) {
-            this.getEntryData(Chandelier_Exit).add(Entry(i.toFloat(),chadExitData.getValue(i).toDouble().toFloat()))
+            this.getEntryData(Chandelier_Exit_Long).add(Entry(i.toFloat(),chadExitData.getValue(i).toDouble().toFloat()))
+        }
+    }
+    private fun updateChandelierExitShort(timeSeries: TimeSeries?, timeFrame: Int, ratio: Decimal) {
+        this.getEntryData(Chandelier_Exit_Short).clear()
+        var chadExitData = ChandelierExitShortIndicator(timeSeries, timeFrame,ratio)
+        for (i in 0 until closePrice.timeSeries.tickCount) {
+            this.getEntryData(Chandelier_Exit_Short).add(Entry(i.toFloat(),chadExitData.getValue(i).toDouble().toFloat()))
         }
     }
     //Detrend Price Ocelator

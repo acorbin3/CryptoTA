@@ -32,6 +32,7 @@ data class Overlay(val context: Context, val kind: Kind){
     var longTerm: Int = 0
     var PPO_EMA: Int = 0
     var ratio: Int = 0
+    var k: Int = 0
     var accelerationFactor: Int = 0
     var maximumAcceleration: Int = 0
     var conversionPeriod: Int = 0
@@ -99,6 +100,48 @@ data class Overlay(val context: Context, val kind: Kind){
             Overlay.Kind.D_BB_Lower -> {
                 allIndicatorInfo[0].label = "BB Lower Color"
                 kindData = KindData(false,true,Kind.Bollinger_Bands,-1,2,false,true)
+            }
+
+            Overlay.Kind.Bollinger_Band_Width ->{
+                allIndicatorInfo[0].label = "Bollinger Bands Width"
+                allIndicatorInfo[0].selectedLegendLabel = "BB - Width"
+                separateChart = true
+                kindData = KindData(true,false,Kind.Bollinger_Band_Width, -1,-1, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_BBW_Color.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context, R.color.md_cyan_700)
+            }
+            Kind.D_BBW_Color ->{
+                allIndicatorInfo[0].label = "BB Width Color"
+                kindData = KindData(false,true,Kind.Bollinger_Band_Width,0)
+            }
+
+            Overlay.Kind.Bollinger_Band_Percent_B ->{
+                values[0].value = 20.0
+                values[0].min = 2.0
+                values[0].max = 50.0
+                values[1].value = 2.0
+                values[1].min = 1.0
+                values[1].max = 10.0
+                separateChart = true
+                this.timeFrame = 0
+                this.k = 1
+                allIndicatorInfo[0].label = "Bollinger Bands % B"
+                allIndicatorInfo[0].selectedLegendLabel = "BB %B"
+                kindData = KindData(true,false,Kind.Bollinger_Band_Percent_B, -1,-1, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_BBPB_Color.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context, R.color.md_amber_500)
+            }
+            Kind.D_BBPB_TimeFrame ->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Bollinger_Band_Percent_B,0)
+            }
+            Kind.D_BBPB_K ->{
+                allIndicatorInfo[0].label = "K"
+                kindData = KindData(false,true,Kind.Bollinger_Band_Percent_B,1)
+            }
+            Overlay.Kind.D_BBPB_Color -> {
+                allIndicatorInfo[0].label = "BB %B Color"
+                kindData = KindData(false,true,Kind.Bollinger_Band_Percent_B,-1,0)
             }
 
             Overlay.Kind.Keltner_Channel ->{
@@ -215,7 +258,7 @@ data class Overlay(val context: Context, val kind: Kind){
                 allIndicatorInfo[0].label = "Dot Color"
                 kindData = KindData(false,true,Kind.Parabolic_SAR,-1,0)
             }
-            Overlay.Kind.Chandelier_Exit ->{
+            Overlay.Kind.Chandelier_Exit_Long ->{
                 values[0].value = 22.0
                 values[0].min = 2.0
                 values[0].max = 50.0
@@ -224,24 +267,74 @@ data class Overlay(val context: Context, val kind: Kind){
                 values[1].max = 5.0
                 this.timeFrame = 0
                 this.ratio = 1
-                allIndicatorInfo[0].label = "Chandelier Exit"
-                allIndicatorInfo[0].selectedLegendLabel = "CE"
-                kindData = KindData(true,false,Kind.Chandelier_Exit, -1,0, true, true)
-                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Chandelier_Exit.toString() + "_COLOR",0)
+                allIndicatorInfo[0].label = "Chandelier Exit Long"
+                allIndicatorInfo[0].selectedLegendLabel = "CEL"
+                kindData = KindData(true,false,Kind.Chandelier_Exit_Long, -1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Chandelier_Exit_Long.toString() + "_COLOR",0)
                 allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_purple_500)
             }
-            Overlay.Kind.D_CE_Timeframe -> {
+            Overlay.Kind.D_CEL_Timeframe -> {
                 allIndicatorInfo[0].label = "Timeframe"
-                kindData = KindData(false,true,Kind.Chandelier_Exit,0)
+                kindData = KindData(false,true,Kind.Chandelier_Exit_Long,0)
             }
-            Overlay.Kind.D_CE_Ratio -> {
+            Overlay.Kind.D_CEL_Ratio -> {
                 allIndicatorInfo[0].label = "Ratio"
-                kindData = KindData(false,true,Kind.Chandelier_Exit,1)
+                kindData = KindData(false,true,Kind.Chandelier_Exit_Long,1)
             }
-            Kind.D_CE_Color ->{
+            Kind.D_CEL_Color ->{
                 allIndicatorInfo[0].label = "Line Color"
-                kindData = KindData(false,true,Kind.Chandelier_Exit,-1,0)
+                kindData = KindData(false,true,Kind.Chandelier_Exit_Long,-1,0)
             }
+
+            Overlay.Kind.Chandelier_Exit_Short ->{
+                values[0].value = 22.0
+                values[0].min = 2.0
+                values[0].max = 50.0
+                values[1].value = 3.0
+                values[1].min = 2.0
+                values[1].max = 5.0
+                this.timeFrame = 0
+                this.ratio = 1
+                allIndicatorInfo[0].label = "Chandelier Exit Short"
+                allIndicatorInfo[0].selectedLegendLabel = "CES"
+                kindData = KindData(true,false,Kind.Chandelier_Exit_Short, -1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Chandelier_Exit_Short.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_purple_200)
+            }
+            Overlay.Kind.D_CES_Timeframe -> {
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Chandelier_Exit_Short,0)
+            }
+            Overlay.Kind.D_CES_Ratio -> {
+                allIndicatorInfo[0].label = "Ratio"
+                kindData = KindData(false,true,Kind.Chandelier_Exit_Short,1)
+            }
+            Kind.D_CES_Color ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Chandelier_Exit_Short,-1,0)
+            }
+
+            Overlay.Kind.Double_EMA ->{
+                values[0].value = 9.0
+                values[0].min = 2.0
+                values[0].max = 30.0
+                this.timeFrame = 0
+                this.ratio = 1
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel = "DEMA"
+                kindData = KindData(true,false,this.kind, -1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
+            }
+            Overlay.Kind.D_DEMA_Timeframe-> {
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Double_EMA,0)
+            }
+            Kind.D_DEMA_Color ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Double_EMA,-1,0)
+            }
+
             Overlay.Kind.Ichimoku_Cloud ->{
                 values[0].value = 9.0 //ConversionPeriod
                 values[0].min = 2.0
@@ -632,7 +725,7 @@ data class Overlay(val context: Context, val kind: Kind){
                 kindData = KindData(false,true,Kind.On_Balance_Volume,-1,0)
             }
 
-            Overlay.Kind.Piviot_Point ->{
+            Overlay.Kind.Pivot_Point ->{
                 allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
                 allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
                 kindData = KindData(true,false,this.kind,-1,0, true, true)
@@ -678,28 +771,159 @@ data class Overlay(val context: Context, val kind: Kind){
             }
             Overlay.Kind.D_PP_R1 ->{
                 allIndicatorInfo[0].label = "R1"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,1,false,true)
+                kindData = KindData(false,true,Kind.Pivot_Point,-1,1,false,true)
             }
             Overlay.Kind.D_PP_R2 ->{
                 allIndicatorInfo[0].label = "R2"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,2,false,true)
+                kindData = KindData(false,true,Kind.Pivot_Point,-1,2,false,true)
             }
             Overlay.Kind.D_PP_R3 ->{
                 allIndicatorInfo[0].label = "R3"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,3,false,true)
+                kindData = KindData(false,true,Kind.Pivot_Point,-1,3,false,true)
             }
             Overlay.Kind.D_PP_S1 ->{
                 allIndicatorInfo[0].label = "S1"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,4,false,true)
+                kindData = KindData(false,true,Kind.Pivot_Point,-1,4,false,true)
             }
             Overlay.Kind.D_PP_S2 ->{
                 allIndicatorInfo[0].label = "S2"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,5,false,true)
+                kindData = KindData(false,true,Kind.Pivot_Point,-1,5,false,true)
             }
             Overlay.Kind.D_PP_S3 ->{
                 allIndicatorInfo[0].label = "S3"
-                kindData = KindData(false,true,Kind.Piviot_Point,-1,6,false,true)
+                kindData = KindData(false,true,Kind.Pivot_Point,-1,6,false,true)
             }
+
+            Overlay.Kind.DeMark_Pivot_Point ->{
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_yellow_600)
+                allIndicatorInfo[0].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[1].label = "Resistance"
+                allIndicatorInfo[1].selectedLegendLabel = "Resistance"
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_DMPP_Resistance.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_red_700)
+                allIndicatorInfo[1].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[2].label = "Support"
+                allIndicatorInfo[2].selectedLegendLabel = "Support"
+                allIndicatorInfo[2].color = sharedPref.getInt(Overlay.Kind.D_DMPP_Support.toString() + "_COLOR",0)
+                allIndicatorInfo[2].colorDefault = ContextCompat.getColor(context,R.color.md_red_700)
+                allIndicatorInfo[2].type = IndicatorType.Piviot_Line
+
+            }
+            Overlay.Kind.D_DMPP_Resistance ->{
+                allIndicatorInfo[0].label = "Resistance"
+                kindData = KindData(false,true,Kind.DeMark_Pivot_Point,-1,1,false,true)
+            }
+            Overlay.Kind.D_DMPP_Support ->{
+                allIndicatorInfo[0].label = "Support"
+                kindData = KindData(false,true,Kind.DeMark_Pivot_Point,-1,2,false,true)
+            }
+
+            Overlay.Kind.Fibonacci_Reversal_Resistance ->{
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[0].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[1].label = "Factor 1"
+                allIndicatorInfo[1].selectedLegendLabel = "Factor 1"
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_FRR_1.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[1].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[2].label = "Factor 2"
+                allIndicatorInfo[2].selectedLegendLabel = "Factor 2"
+                allIndicatorInfo[2].color = sharedPref.getInt(Overlay.Kind.D_FRR_2.toString() + "_COLOR",0)
+                allIndicatorInfo[2].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[2].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[3].label = "Factor 3"
+                allIndicatorInfo[3].selectedLegendLabel = "Factor 3"
+                allIndicatorInfo[3].color = sharedPref.getInt(Overlay.Kind.D_FRR_3.toString() + "_COLOR",0)
+                allIndicatorInfo[3].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[3].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[4].label = "Factor 4"
+                allIndicatorInfo[4].selectedLegendLabel = "Factor 4"
+                allIndicatorInfo[4].color = sharedPref.getInt(Overlay.Kind.D_FRR_4.toString() + "_COLOR",0)
+                allIndicatorInfo[4].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[4].type = IndicatorType.Piviot_Line
+
+            }
+            Overlay.Kind.D_FRR_1 ->{
+                allIndicatorInfo[0].label = "Factor 1"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Resistance,-1,1,false,true)
+            }
+            Overlay.Kind.D_FRR_2 ->{
+                allIndicatorInfo[0].label = "Factor 2"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Resistance,-1,2,false,true)
+            }
+            Overlay.Kind.D_FRR_3 ->{
+                allIndicatorInfo[0].label = "Factor 3"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Resistance,-1,3,false,true)
+            }
+            Overlay.Kind.D_FRR_4 ->{
+                allIndicatorInfo[0].label = "Factor 4"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Resistance,-1,4,false,true)
+            }
+
+            Overlay.Kind.Fibonacci_Reversal_Support ->{
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= this.kind.toString().replace("_", " ")
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[0].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[1].label = "Factor 1"
+                allIndicatorInfo[1].selectedLegendLabel = "Factor 1"
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_FRS_1.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[1].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[2].label = "Factor 2"
+                allIndicatorInfo[2].selectedLegendLabel = "Factor 2"
+                allIndicatorInfo[2].color = sharedPref.getInt(Overlay.Kind.D_FRS_2.toString() + "_COLOR",0)
+                allIndicatorInfo[2].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[2].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[3].label = "Factor 3"
+                allIndicatorInfo[3].selectedLegendLabel = "Factor 3"
+                allIndicatorInfo[3].color = sharedPref.getInt(Overlay.Kind.D_FRS_3.toString() + "_COLOR",0)
+                allIndicatorInfo[3].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[3].type = IndicatorType.Piviot_Line
+
+                allIndicatorInfo[4].label = "Factor 4"
+                allIndicatorInfo[4].selectedLegendLabel = "Factor 4"
+                allIndicatorInfo[4].color = sharedPref.getInt(Overlay.Kind.D_FRS_4.toString() + "_COLOR",0)
+                allIndicatorInfo[4].colorDefault = ContextCompat.getColor(context,R.color.md_blue_500)
+                allIndicatorInfo[4].type = IndicatorType.Piviot_Line
+
+            }
+            Overlay.Kind.D_FRS_1 ->{
+                allIndicatorInfo[0].label = "Factor 1"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Support,-1,1,false,true)
+            }
+            Overlay.Kind.D_FRS_2 ->{
+                allIndicatorInfo[0].label = "Factor 2"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Support,-1,2,false,true)
+            }
+            Overlay.Kind.D_FRS_3 ->{
+                allIndicatorInfo[0].label = "Factor 3"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Support,-1,3,false,true)
+            }
+            Overlay.Kind.D_FRS_4 ->{
+                allIndicatorInfo[0].label = "Factor 4"
+                kindData = KindData(false,true,Kind.Fibonacci_Reversal_Support,-1,4,false,true)
+            }
+
 
             Overlay.Kind.Triple_EMA ->{
                 values[0].value = 9.0
@@ -719,6 +943,84 @@ data class Overlay(val context: Context, val kind: Kind){
             Overlay.Kind.D_TEMA_COLOR ->{
                 allIndicatorInfo[0].label = "Line Color"
                 kindData = KindData(false,true,Kind.Triple_EMA,-1,0)
+            }
+
+            Overlay.Kind.Fisher_Transform ->{
+                values[0].value = 9.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "FT"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_orange_500)
+            }
+            Overlay.Kind.D_FT_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Fisher_Transform,0)
+            }
+            Overlay.Kind.D_FT_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Fisher_Transform,-1,0)
+            }
+
+            Overlay.Kind.CCI ->{
+                values[0].value = 20.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "CCI"
+                kindData = KindData(true,false,Kind.CCI,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.CCI.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_brown_100)
+            }
+            Overlay.Kind.D_CCI_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.CCI,0)
+            }
+            Overlay.Kind.D_CCI_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.CCI,-1,0)
+            }
+            Overlay.Kind.Average_Directional_Index ->{
+                values[0].value = 14.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "ADX"
+                allIndicatorInfo[1].label = "Minus Directional Indicator"
+                allIndicatorInfo[1].selectedLegendLabel= "-DI"
+                allIndicatorInfo[2].label = "Plus Direcitonal Indicator"
+                allIndicatorInfo[2].selectedLegendLabel= "+DI"
+                kindData = KindData(true,false,Kind.Average_Directional_Index,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Average_Directional_Index.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_grey_50)
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_ADX_Minus.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_red_400)
+                allIndicatorInfo[2].color = sharedPref.getInt(Overlay.Kind.D_ADX_Plus.toString() + "_COLOR",0)
+                allIndicatorInfo[2].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
+            }
+            Overlay.Kind.D_ADX_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Average_Directional_Index,0)
+            }
+            Overlay.Kind.D_ADX_COLOR ->{
+                allIndicatorInfo[0].label = "ADX Color"
+                kindData = KindData(false,true,Kind.Average_Directional_Index,-1,0)
+            }
+            Overlay.Kind.D_ADX_Minus ->{
+                allIndicatorInfo[0].label = "-DI Color"
+                kindData = KindData(false,true,Kind.Average_Directional_Index,-1,1,false,true)
+            }
+            Overlay.Kind.D_ADX_Plus->{
+                allIndicatorInfo[0].label = "+DI Color"
+                kindData = KindData(false,true,Kind.Average_Directional_Index,-1,2,false,true)
             }
 
             Overlay.Kind.Kaufman_Adaptive_MA ->{
@@ -908,9 +1210,13 @@ data class Overlay(val context: Context, val kind: Kind){
                 this.separateChart = true
                 allIndicatorInfo[0].label = "Accumulation Distribution"
                 allIndicatorInfo[0].selectedLegendLabel = "Accum/Distro"
-                kindData = KindData(true, false, Kind.Accumulation_Distribution, -1, 0, false, true)
+                kindData = KindData(true, false, Kind.Accumulation_Distribution, -1, 0, true, true)
                 allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Accumulation_Distribution.toString() + "_COLOR",0)
                 allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_pink_300)
+            }
+            Overlay.Kind.D_AD_Color ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Accumulation_Distribution,-1,0)
             }
 
             Overlay.Kind.PPO -> {
@@ -978,7 +1284,14 @@ data class Overlay(val context: Context, val kind: Kind){
 
         CandleStick,
 
+        Average_Directional_Index,
+        D_ADX_Timeframe,
+        D_ADX_COLOR,
+        D_ADX_Minus,
+        D_ADX_Plus,
+
         Accumulation_Distribution,
+        D_AD_Color,
 
         Awesome_Oscillator,
         D_AO_Timeframe1,
@@ -1000,6 +1313,10 @@ data class Overlay(val context: Context, val kind: Kind){
         D_CMO_Timeframe,
         D_CMO_COLOR,
 
+        CCI,
+        D_CCI_Timeframe,
+        D_CCI_Color,
+
         Coppock_Curve,
         D_CC_Long_Timeframe,
         D_CC_Short_Timeframe,
@@ -1008,6 +1325,10 @@ data class Overlay(val context: Context, val kind: Kind){
 
         DPO,
         D_DPO_Timeframe,
+
+        Fisher_Transform,
+        D_FT_Timeframe,
+        D_FT_Color,
 
         PPO,
         D_PPO_ShortTerm,
@@ -1042,11 +1363,8 @@ data class Overlay(val context: Context, val kind: Kind){
         On_Balance_Volume,
         D_OBV_COLOR,
 
-        Triple_EMA,
-        D_TEMA_Timeframe,
-        D_TEMA_COLOR,
 
-        Piviot_Point,
+        Pivot_Point,
         D_PP_R1,
         D_PP_R2,
         D_PP_R3,
@@ -1054,16 +1372,45 @@ data class Overlay(val context: Context, val kind: Kind){
         D_PP_S2,
         D_PP_S3,
 
+        DeMark_Pivot_Point,
+        D_DMPP_Support,
+        D_DMPP_Resistance,
+
+        Fibonacci_Reversal_Support,
+        D_FRS_1,
+        D_FRS_2,
+        D_FRS_3,
+        D_FRS_4,
+
+        Fibonacci_Reversal_Resistance,
+        D_FRR_1,
+        D_FRR_2,
+        D_FRR_3,
+        D_FRR_4,
+
         Bollinger_Bands,
         D_BB_Timeframe,
         D_BB_Middle,
         D_BB_Upper,
         D_BB_Lower,
 
-        Chandelier_Exit,
-        D_CE_Timeframe,
-        D_CE_Ratio,
-        D_CE_Color,
+        Bollinger_Band_Width,
+        D_BBW_Color,
+
+        Bollinger_Band_Percent_B,
+        D_BBPB_TimeFrame,
+        D_BBPB_K,
+        D_BBPB_Color,
+
+        Chandelier_Exit_Long,
+        D_CEL_Timeframe,
+        D_CEL_Ratio,
+        D_CEL_Color,
+
+        Chandelier_Exit_Short,
+        D_CES_Timeframe,
+        D_CES_Ratio,
+        D_CES_Color,
 
         Exponential_MA,
         D_EMA_Timeframe,
@@ -1122,6 +1469,14 @@ data class Overlay(val context: Context, val kind: Kind){
         Zero_Lag_Moving_Average,
         D_ZLEMA_TimeFrame,
         D_ZLEMA_COLOR,
+
+        Double_EMA,
+        D_DEMA_Timeframe,
+        D_DEMA_Color,
+
+        Triple_EMA,
+        D_TEMA_Timeframe,
+        D_TEMA_COLOR,
 
         Notifications,
 

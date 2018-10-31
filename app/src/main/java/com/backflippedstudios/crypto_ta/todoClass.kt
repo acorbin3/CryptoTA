@@ -6,20 +6,19 @@ package com.backflippedstudios.crypto_ta
 class todoClass {
 
 
-    //DONE 10/24/2018 - Fixed loading menu bug
-    // TODO - when background indicators are loading and user attempts to turn on, notify still loading
-    // TODO - BUG - When PPO long term is greater than short term this will throw an error
-//    java.lang.IllegalArgumentException: Long term period count must be greater than short term period count
-//    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
+
 
     //TODO: Indicators I am interested in adding -
-    //      TODO: , Fisher Transform,
-    //      TODO: Trailing Stop Loss
-
+    //      TODO: MACD, MassIndex,RandomWalkIndex,RAVI,  Trailing Stop Loss
+    //TODO - Update screenshots on play store
 
     //TODO - Add splash screen with loading
 
     //TODO - feedback button
+
+    // TODO - BUG - When PPO long term is greater than short term this will throw an error
+    //    java.lang.IllegalArgumentException: Long term period count must be greater than short term period count
+    //    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
 
     // Release 2
 
@@ -32,6 +31,25 @@ class todoClass {
 
     //TODO - Look at CPU usages on cryptowatch api
     //TODO - Look into moving legend to bottom left??
+
+
+
+    //Release 1.3.13 10/31/2018
+    //DONE 10/25/2018 - Fibonacci Reversal indicator
+    //DONE 10/26/2018 - DeMark Pivot Point
+    // DONE 10/26/2018 - BB Width
+    // DONE 10/26/2018 - BB % B
+
+    //DONE 10/31/2018 - ADX, +DI -DI
+    // DONE 10/31/2018 - Fix limit line
+    // DONE 10/31/2018 - Fix on value select to display values
+    //DONE 10/31/2018- Fix when switching a line on and off, do not recalculate for SEPARATE charts
+    //      DONE 10/31/2018: CCI,FIx Chandelier for both short and long, Double EMA, Fisher Transform,
+    //DONE 10/31/2018 - Bug - Issue when resetting default color
+
+    // Release 1.3.12 - 10/24/2018
+    //DONE 10/24/2018 - Fixed loading menu bug
+    // DONE 10/24/2018  - when background indicators are loading and user attempts to turn on, notify still loading
 
 
     //Release 1.3.11

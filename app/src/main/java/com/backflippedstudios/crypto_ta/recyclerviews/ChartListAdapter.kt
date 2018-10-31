@@ -160,24 +160,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                 list[position].status = ChartStatusData.Status.LOADING_COMPLETE
 
                 //Check to see if Piviot points are on, if so then we need to create a custom legend on main graph
-                if(OverlayAdapter.data.all[Overlay.Kind.Piviot_Point]?.selected!!){
-                    val legendList: MutableList<LegendEntry> = arrayListOf()
-                    var updatedText: String?
-                    for (kind in Overlay.Kind.values()) {
-                        val item = OverlayAdapter.data.all[kind]!!
-                        if (!item.separateChart && ((item.selected && item.kindData.hasData) || (item.kindData.hasData && OverlayAdapter.isParentSelected(item.kindData.parentKind)))) {
-                            val color: Int = OverlayAdapter.getColor(item.kind, item.kindData.parentKind, item.kindData.colorIndex)!!
-                            updatedText = OverlayAdapter.getLegendText(item.kind, item.kindData.parentKind, item.kindData.colorIndex)
-                            legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-
-                        }
-                    }
-                    if(legendList.isNotEmpty()) {
-                        //Strange that we have index of kind which is really used for the seperate charts
-                        // but for the main Chart it is just None
-                        (data.charts[Overlay.Kind.None] as CombinedChart).legend.setCustom(legendList)
-                    }
-                }
+                updateLegendForMainChart()
 
             }
             ChartStatusData.Status.INITIAL_LOAD -> {
@@ -196,8 +179,10 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                     }
                 }
             }
-            ChartStatusData.Status.UPDATE_CHART -> {
-                MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
+            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART -> {
+                if(list[position].status == ChartStatusData.Status.UPDATE_CHART) {
+                    MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
+                }
                 when (list[position].kind) {
                     Overlay.Kind.Volume_Bars -> {
                         ChartStyle(context).updateVolumeGraph(
@@ -205,6 +190,10 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 combinedViewHolder.chart,
                                 true
                         )
+                    }
+                    Overlay.Kind.None ->{
+                        //Check to see if Piviot points are on, if so then we need to create a custom legend on main graph
+                        updateLegendForMainChart()
                     }
                     else -> {
                         val allLineGraphStyle: ArrayList<ChartStyle.LineGraphStyle> = ArrayList()
@@ -232,6 +221,8 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 }
                             }
                         }
+
+                        //Custom Limit Lines for graphs
                         if (list[position].kind == Overlay.Kind.AroonUpDown) {
                             combinedViewHolder.chart.fillInbetweenLines = false
 
@@ -247,6 +238,17 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                             lineLimit.lineColor = ContextCompat.getColor(context, R.color.md_yellow_600)
                             val lineLimit2 = LimitLine(-20F)
                             lineLimit2.lineColor = ContextCompat.getColor(context, R.color.md_yellow_600)
+                            combinedViewHolder.chart.axisRight.addLimitLine(lineLimit)
+                            combinedViewHolder.chart.axisRight.addLimitLine(lineLimit2)
+                        }else if(list[position].kind == Overlay.Kind.Average_Directional_Index) {
+                            val lineLimit = LimitLine(20F)
+                            lineLimit.lineColor = ContextCompat.getColor(context, R.color.md_blue_600)
+                            combinedViewHolder.chart.axisRight.addLimitLine(lineLimit)
+                        }else if(list[position].kind == Overlay.Kind.CCI) {
+                            val lineLimit = LimitLine(100F)
+                            lineLimit.lineColor = ContextCompat.getColor(context, R.color.md_yellow_400)
+                            val lineLimit2 = LimitLine(-100F)
+                            lineLimit2.lineColor = ContextCompat.getColor(context, R.color.md_yellow_400)
                             combinedViewHolder.chart.axisRight.addLimitLine(lineLimit)
                             combinedViewHolder.chart.axisRight.addLimitLine(lineLimit2)
                         }
@@ -285,7 +287,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                     hideIndicatorsList(combinedViewHolder.chart.rootView)
 
                     for (chartStatusData in list) {
-                        var updatedText: String
+                        var updatedText = ""
                         val legendList: MutableList<LegendEntry> = arrayListOf()
                         when (chartStatusData.type) {
                             ChartStatusData.Type.MAIN_CHART -> {
@@ -296,45 +298,9 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 }
                                 for (kind in Overlay.Kind.values()) {
                                     val item = OverlayAdapter.data.all[kind]!!
-                                    if (!item.separateChart && (item.selected || item.kindData.hasData && OverlayAdapter.isParentSelected(item.kindData.parentKind))) {
+                                    if (!OverlayAdapter.isParentSeparateChart(item.kindData.parentKind) && (item.selected || item.kindData.hasData && OverlayAdapter.isParentSelected(item.kindData.parentKind))) {
 
-                                        if (item.kindData.hasData) {
-                                            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt()) {
-
-                                                if (!item.kindData.detailed) {
-                                                    var color = 0
-                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind)[e.x.toInt()]
-                                                    //Parent item that has data
-                                                    updatedText = item.allIndicatorInfo[0].selectedLegendLabel + " " + values.y
-                                                    color = item.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                }else{
-                                                    var index = e.x.toInt()
-                                                    if (item.kind == Overlay.Kind.D_Ich_Cloud_Lead_A || item.kind == Overlay.Kind.D_Ich_Cloud_Lead_B) {
-                                                        var laggingPeriod = OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt()
-                                                        index = e.x.toInt() - laggingPeriod
-                                                    } else if (item.kind == Overlay.Kind.Keltner_Channel) {
-                                                        val size = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).size
-                                                        if (size > 0) {
-                                                            val lastVal = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).last().x
-                                                            val offset = lastVal - size
-                                                            index = ((e.x.toInt() - offset.absoluteValue).toInt())
-                                                        }
-                                                    }
-                                                    if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > index && index > 0) {
-                                                        try {
-                                                            val color: Int = OverlayAdapter.getColor(item.kind, item.kindData.parentKind, item.kindData.colorIndex)!!
-                                                            val index = e.x.toInt()
-                                                            val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind)[index]
-                                                            updatedText = OverlayAdapter.getSelectedLegendText(item.kind, item.kindData.parentKind, item.kindData.colorIndex) + " " + values.y
-                                                            legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                        } catch (exception: Exception) {
-
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        updatedText = getSelectedValueText(item, e, updatedText, legendList)
                                         when (item.kind) {
 
 
@@ -384,42 +350,16 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 }
                             }
                             ChartStatusData.Type.SEPARATE_CHART -> {
-                                for (overlay in OverlayAdapter.data.list) {
-                                    if (overlay.selected && overlay.separateChart && chartStatusData.kind == overlay.kind) {
+                                for (kind in Overlay.Kind.values()) {
+                                    val item = OverlayAdapter.data.all[kind]!!
+                                    if (chartStatusData.kind == item.kindData.parentKind
+                                            && OverlayAdapter.isParentSeparateChart(item.kindData.parentKind)
+                                            && (item.selected || item.kindData.hasData && OverlayAdapter.isParentSelected(item.kindData.parentKind))) {
 
-                                        if (overlay.kindData.hasData) {
-                                            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(chartStatusData.kind).size > e.x.toInt() && e.x.toInt() > 0) {
-
-                                                if (!overlay.kindData.detailed) {
-                                                    var color = 0
-                                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(chartStatusData.kind)[e.x.toInt()]
-                                                    //Parent item that has data
-                                                    updatedText = overlay.allIndicatorInfo[0].selectedLegendLabel + " " + values.y
-                                                    color = overlay.allIndicatorInfo[0].color
-                                                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                }
-                                            }
-                                        } else {
-                                            for (dItem in OverlayAdapter.data.all.values) {
-                                                if (overlay.kind == dItem.kindData.parentKind && dItem.kindData.hasData) {
-                                                    var index = e.x.toInt()
-                                                    if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind).size > index && index > 0) {
-
-                                                        var color = 0
-                                                        val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind)[index]
-                                                        updatedText = OverlayAdapter.getSelectedLegendText(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex) + " " + values.y
-                                                        color = OverlayAdapter.getColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)!!
-                                                        legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        updatedText = getSelectedValueText(item, e, updatedText, legendList)
                                     }
                                 }
-
                             }
-
-
                         }
 //                        print(updatedText)
 
@@ -475,6 +415,63 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
         combinedViewHolder.chart.invalidate()
 
+    }
+
+    private fun updateLegendForMainChart() {
+        if (OverlayAdapter.data.all[Overlay.Kind.Pivot_Point]?.selected!!
+                || OverlayAdapter.data.all[Overlay.Kind.Fibonacci_Reversal_Support]?.selected!!
+                || OverlayAdapter.data.all[Overlay.Kind.Fibonacci_Reversal_Resistance]?.selected!!
+                || OverlayAdapter.data.all[Overlay.Kind.DeMark_Pivot_Point]?.selected!!) {
+            val legendList: MutableList<LegendEntry> = arrayListOf()
+            var updatedText: String?
+            for (kind in Overlay.Kind.values()) {
+                val item = OverlayAdapter.data.all[kind]!!
+                if (!item.separateChart && ((item.selected && item.kindData.hasData) || (item.kindData.hasData && OverlayAdapter.isParentSelected(item.kindData.parentKind)))) {
+                    val color: Int = OverlayAdapter.getColor(item.kind, item.kindData.parentKind, item.kindData.colorIndex)!!
+                    updatedText = OverlayAdapter.getLegendText(item.kind, item.kindData.parentKind, item.kindData.colorIndex)
+                    legendList.add(LegendEntry(updatedText, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
+
+                }
+            }
+            if (legendList.isNotEmpty()) {
+                //Strange that we have index of kind which is really used for the seperate charts
+                // but for the main Chart it is just None
+                (data.charts[Overlay.Kind.None] as CombinedChart).legend.setCustom(legendList)
+            }
+        }
+    }
+
+    private fun getSelectedValueText(item: Overlay, e: Entry, updatedText: String, legendList: MutableList<LegendEntry>): String {
+        var updatedText1 = updatedText
+        if (item.kindData.hasData) {
+            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt()) {
+
+                var index = e.x.toInt()
+                if (item.kind == Overlay.Kind.D_Ich_Cloud_Lead_A || item.kind == Overlay.Kind.D_Ich_Cloud_Lead_B) {
+                    var laggingPeriod = OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt()
+                    index = e.x.toInt() - laggingPeriod
+                } else if (item.kind == Overlay.Kind.Keltner_Channel) {
+                    val size = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).size
+                    if (size > 0) {
+                        val lastVal = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).last().x
+                        val offset = lastVal - size
+                        index = ((e.x.toInt() - offset.absoluteValue).toInt())
+                    }
+                }
+                if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > index && index > 0) {
+                    try {
+                        val color: Int = OverlayAdapter.getColor(item.kind, item.kindData.parentKind, item.kindData.colorIndex)!!
+                        val index = e.x.toInt()
+                        val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind)[index]
+                        updatedText1 = OverlayAdapter.getSelectedLegendText(item.kind, item.kindData.parentKind, item.kindData.colorIndex) + " " + values.y
+                        legendList.add(LegendEntry(updatedText1, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
+                    } catch (exception: Exception) {
+
+                    }
+                }
+            }
+        }
+        return updatedText1
     }
 
     private fun hideIndicatorsList(view: View?) {
