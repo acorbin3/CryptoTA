@@ -9,7 +9,8 @@ data class Overlay(val context: Context, val kind: Kind){
     enum class IndicatorType{
         Line,
         Piviot_Line,
-        Scatter
+        Scatter,
+        Bar
     }
     data class IndicatorInfo(
             var label: String = "",
@@ -924,6 +925,100 @@ data class Overlay(val context: Context, val kind: Kind){
                 kindData = KindData(false,true,Kind.Fibonacci_Reversal_Support,-1,4,false,true)
             }
 
+            Overlay.Kind.Trailing_Stop_Loss ->{
+                values[0].value = 3.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                values[1].value = 21.0
+                values[1].min = 0.5
+                values[1].max = 45.0
+                this.timeFrame = 0
+                this.timeFrame2 = 1
+                allIndicatorInfo[0].label = "Trailing Stop Loss"
+                allIndicatorInfo[0].selectedLegendLabel= "TSL"
+                kindData = KindData(true,false,Kind.Trailing_Stop_Loss,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Trailing_Stop_Loss.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
+            }
+            Overlay.Kind.D_TSL_Distance->{
+                allIndicatorInfo[0].label = "Distance"
+                kindData = KindData(false,true,Kind.Trailing_Stop_Loss,0)
+            }
+            Overlay.Kind.D_TSL_Initial_Limit->{
+                allIndicatorInfo[0].label = "Initial Limit"
+                kindData = KindData(false,true,Kind.Trailing_Stop_Loss,1)
+            }
+            Overlay.Kind.D_TSL_Color ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Trailing_Stop_Loss,-1,0)
+            }
+
+            Overlay.Kind.MACD ->{
+                values[0].value = 12.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                values[1].value = 26.0
+                values[1].min = 0.5
+                values[1].max = 45.0
+                this.timeFrame = 0
+                this.timeFrame2 = 1
+                this.separateChart = true
+                allIndicatorInfo[0].label = "MACD"
+                allIndicatorInfo[0].selectedLegendLabel= "MACD"
+                allIndicatorInfo[1].label = "EMA(9)"
+                allIndicatorInfo[1].selectedLegendLabel= "EMA(9)"
+                allIndicatorInfo[2].label = "Historgram"
+                allIndicatorInfo[2].selectedLegendLabel= "Historgram"
+                kindData = KindData(true,false,Kind.MACD,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.MACD.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_orange_500)
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_MACD_Timeframe_Long.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_blue_600)
+                allIndicatorInfo[2].color = sharedPref.getInt(Overlay.Kind.D_MACD_Timeframe_Short.toString() + "_COLOR",0)
+                allIndicatorInfo[2].colorDefault = ContextCompat.getColor(context,R.color.md_red_600)
+                allIndicatorInfo[2].type = IndicatorType.Bar
+            }
+            Overlay.Kind.D_MACD_Timeframe_Long->{
+                allIndicatorInfo[0].label = "Timeframe Long"
+                kindData = KindData(false,true,Kind.MACD,1,1,false,true) //Keep ema data
+            }
+            Overlay.Kind.D_MACD_Timeframe_Short->{
+                allIndicatorInfo[0].label = "Timeframe Short"
+                kindData = KindData(false,true,Kind.MACD,0,2,false,true) // Keep histrogram data
+            }
+            Overlay.Kind.D_MACD_Color ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.MACD,-1,0)
+            }
+
+            Overlay.Kind.RAVI ->{
+                values[0].value = 7.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                values[1].value = 65.0
+                values[1].min = 30.0
+                values[1].max = 100.0
+                this.timeFrame = 0
+                this.timeFrame2 = 1
+                this.separateChart = true
+                allIndicatorInfo[0].label = "Range Action Verif Index"
+                allIndicatorInfo[0].selectedLegendLabel= "RAVI"
+                kindData = KindData(true,false,Kind.RAVI,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.RAVI.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_cyan_400)
+            }
+            Overlay.Kind.D_RAVI_Short->{
+                allIndicatorInfo[0].label = "Timeframe Short"
+                kindData = KindData(false,true,Kind.RAVI,0)
+            }
+            Overlay.Kind.D_RAVI_Long->{
+                allIndicatorInfo[0].label = "Timeframe Long"
+                kindData = KindData(false,true,Kind.RAVI,1)
+            }
+            Overlay.Kind.D_RAVI_Color ->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.RAVI,-1,0)
+            }
 
             Overlay.Kind.Triple_EMA ->{
                 values[0].value = 9.0
@@ -943,6 +1038,169 @@ data class Overlay(val context: Context, val kind: Kind){
             Overlay.Kind.D_TEMA_COLOR ->{
                 allIndicatorInfo[0].label = "Line Color"
                 kindData = KindData(false,true,Kind.Triple_EMA,-1,0)
+            }
+
+            Overlay.Kind.Periodical_Growth_Rate ->{
+                values[0].value = 10.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "PGR"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_300)
+            }
+            Overlay.Kind.D_PGR_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Periodical_Growth_Rate,0)
+            }
+            Overlay.Kind.D_PGR_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Periodical_Growth_Rate,-1,0)
+            }
+
+            Overlay.Kind.Simple_Linear_Regression ->{
+                values[0].value = 10.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "SLR"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_purple_400)
+            }
+            Overlay.Kind.D_SLR_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Simple_Linear_Regression,0)
+            }
+            Overlay.Kind.D_SLR_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Simple_Linear_Regression,-1,0)
+            }
+
+            Overlay.Kind.Standard_Deviation ->{
+                values[0].value = 10.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "SD"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_amber_500)
+            }
+            Overlay.Kind.D_SD_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Standard_Deviation,0)
+            }
+            Overlay.Kind.D_SD_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Standard_Deviation,-1,0)
+            }
+
+            Overlay.Kind.Standard_Error ->{
+                values[0].value = 10.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "SE"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
+            }
+            Overlay.Kind.D_SE_Timefame->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Standard_Error,0)
+            }
+            Overlay.Kind.D_SE_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Standard_Error,-1,0)
+            }
+
+            Overlay.Kind.Variance_Indicator ->{
+                values[0].value = 10.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                this.timeFrame = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "VI"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_yellow_300)
+            }
+            Overlay.Kind.D_VI_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Variance_Indicator,0)
+            }
+            Overlay.Kind.D_VI_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Variance_Indicator,-1,0)
+            }
+
+            Overlay.Kind.Mass_Index ->{
+                values[0].value = 10.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                values[1].value = 9.0
+                values[1].min = 0.5
+                values[1].max = 35.0
+                this.timeFrame = 0
+                this.timeFrame2 = 0
+                separateChart = true
+                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
+                allIndicatorInfo[0].selectedLegendLabel= "Mass Index"
+                kindData = KindData(true,false,this.kind,-1,0, true, true)
+                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_blue_300)
+            }
+            Overlay.Kind.D_MI_Timeframe->{
+                allIndicatorInfo[0].label = "Timeframe"
+                kindData = KindData(false,true,Kind.Mass_Index,0)
+            }
+            Overlay.Kind.D_MI_EMA_Timeframe->{
+                allIndicatorInfo[0].label = "EMA Timeframe"
+                kindData = KindData(false,true,Kind.Mass_Index,1)
+            }
+            Overlay.Kind.D_MI_Color->{
+                allIndicatorInfo[0].label = "Line Color"
+                kindData = KindData(false,true,Kind.Mass_Index,-1,0)
+            }
+
+            Overlay.Kind.Random_Walking_Index ->{
+                values[0].value = 9.0
+                values[0].min = 0.5
+                values[0].max = 35.0
+                values[1].value = 9.0
+                values[1].min = 0.5
+                values[1].max = 35.0
+                this.timeFrame = 0
+                this.timeFrame2 = 1
+                separateChart = true
+                allIndicatorInfo[0].label = "Random Walking High"
+                allIndicatorInfo[0].selectedLegendLabel= "Random Walking High"
+                allIndicatorInfo[1].label = "Random Walking Low"
+                allIndicatorInfo[1].selectedLegendLabel= "Random Walking Low"
+                kindData = KindData(true,false,this.kind,-1,0, true, false)
+                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.D_RW_Timeframe_High.toString() + "_COLOR",0)
+                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
+                allIndicatorInfo[1].color = sharedPref.getInt(Overlay.Kind.D_RW_Timeframe_Low.toString() + "_COLOR",0)
+                allIndicatorInfo[1].colorDefault = ContextCompat.getColor(context,R.color.md_red_400)
+            }
+            Overlay.Kind.D_RW_Timeframe_High->{
+                allIndicatorInfo[0].label = "Timeframe High"
+                kindData = KindData(false,true,Kind.Random_Walking_Index,0,0,false,true)
+            }
+            Overlay.Kind.D_RW_Timeframe_Low->{
+                allIndicatorInfo[0].label = "Timeframe Low"
+                kindData = KindData(false,true,Kind.Random_Walking_Index,1,1,false,true)
             }
 
             Overlay.Kind.Fisher_Transform ->{
@@ -1330,6 +1588,15 @@ data class Overlay(val context: Context, val kind: Kind){
         D_FT_Timeframe,
         D_FT_Color,
 
+        Mass_Index,
+        D_MI_Timeframe,
+        D_MI_EMA_Timeframe,
+        D_MI_Color,
+
+        Random_Walking_Index,
+        D_RW_Timeframe_High,
+        D_RW_Timeframe_Low,
+
         PPO,
         D_PPO_ShortTerm,
         D_PPO_LongTerm,
@@ -1357,12 +1624,46 @@ data class Overlay(val context: Context, val kind: Kind){
         Positive_Volume,
         D_PV_COLOR,
 
+        Periodical_Growth_Rate,
+        D_PGR_Timeframe,
+        D_PGR_Color,
+
+        MACD,
+        D_MACD_Timeframe_Short,
+        D_MACD_Timeframe_Long,
+        D_MACD_Color,
+
         Negative_Volume,
         D_NV_COLOR,
 
         On_Balance_Volume,
         D_OBV_COLOR,
 
+        RAVI,
+        D_RAVI_Short,
+        D_RAVI_Long,
+        D_RAVI_Color,
+
+        Trailing_Stop_Loss,
+        D_TSL_Distance,
+        D_TSL_Initial_Limit,
+        D_TSL_Color,
+
+        Simple_Linear_Regression,
+        D_SLR_Timeframe,
+        D_SLR_Color,
+
+        Standard_Deviation,
+        D_SD_Timeframe,
+        D_SD_Color,
+
+        Standard_Error,
+        D_SE_Timefame,
+        D_SE_Color,
+
+        Variance_Indicator,
+        D_VI_Timeframe,
+        D_VI_Color,
 
         Pivot_Point,
         D_PP_R1,

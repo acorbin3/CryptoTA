@@ -8,15 +8,20 @@ class todoClass {
 
 
 
-    //TODO: Indicators I am interested in adding -
-    //      TODO: MACD, MassIndex,RandomWalkIndex,RAVI,  Trailing Stop Loss
+    //DONE 11/5/2018: Indicators I am interested in adding -
+    // DONE 11/1/2018 - MassIndex, RandomWalkIndex
+    //      DONE 11/1/2018: RAVI
+    //      DONE 11/1/2018: MACD- Ensure Short is greater than Long,,  Trailing Stop Loss
+    //      DONE 11/4/2018 - Periodical Growth, SimpleLinearRegression, DstandaDeviation, StandardErro, Variance Indicator
+    //DONE 11/5/2018 - Issue - When backgroung thread is loading, and we change 1 indicator param, it kills the backgroud thream
     //TODO - Update screenshots on play store
+    //TODO - Fix rotating to landscape mode when background thread nonItems is loading.
 
     //TODO - Add splash screen with loading
 
     //TODO - feedback button
 
-    // TODO - BUG - When PPO long term is greater than short term this will throw an error
+    // DONE 11/3/2018 - BUG - When PPO long term is greater than short term this will throw an error
     //    java.lang.IllegalArgumentException: Long term period count must be greater than short term period count
     //    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
 

@@ -179,7 +179,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                     }
                 }
             }
-            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART -> {
+            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART,ChartStatusData.Status.LOADING_COMPLETE -> {
                 if(list[position].status == ChartStatusData.Status.UPDATE_CHART) {
                     MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
                 }
@@ -208,6 +208,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 val label = OverlayAdapter.getLabel(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
                                 val filled = OverlayAdapter.getfilled(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
                                 val filledColor = OverlayAdapter.getfilledColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
+                                val type = OverlayAdapter.getType(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
                                 entryData = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind)
                                 if (entryData.isNotEmpty()) {
                                     allLineGraphStyle.add(ChartStyle.LineGraphStyle(entryData,
@@ -215,7 +216,8 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                                     lineLabel = label!!,
                                                     lineColor = color!!,
                                                     filled = filled!!,
-                                                    filledColor = filledColor!!
+                                                    filledColor = filledColor!!,
+                                                    type = type
                                             )
                                     ))
                                 }

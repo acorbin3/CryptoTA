@@ -1139,7 +1139,7 @@ class MainActivity : AppCompatActivity() {
 
         for (overlay in OverlayAdapter.data.list) {
             if (overlay.separateChart and overlay.selected) {
-                updateChartStatus(ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
+                updateChartStatus(ChartStatusData.Status.TOGGLE_CHART, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
             }
         }
 

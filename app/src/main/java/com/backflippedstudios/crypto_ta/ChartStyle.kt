@@ -88,6 +88,7 @@ class ChartStyle(context: Context) {
     fun updateOverlays(overlays: ArrayList<Overlay>, ta: TechnicalAnalysis, mChart: CombinedChart?){
         val combinedData = CombinedData()
         val allScatter_Data = ArrayList<IScatterDataSet>()
+        val allBarData = ArrayList<IBarDataSet>()
 
         //Do candlestick data
         if(ta.getCandlestickData(Overlay.Kind.CandleStick).size > 0) {
@@ -151,6 +152,19 @@ class ChartStyle(context: Context) {
                                     allScatter_Data.add(scatterDataSet)
                                 }
                             }
+                            Overlay.IndicatorType.Bar ->{
+                                var barList = ArrayList<BarEntry>()
+                                for(item in list[i]){
+                                    barList.add(BarEntry(item.x,item.y))
+                                }
+                                val barDataSet = BarDataSet(barList,overlay.allIndicatorInfo[i].label)
+                                barDataSet.color = overlay.allIndicatorInfo[i].color
+                                barDataSet.axisDependency = YAxis.AxisDependency.RIGHT
+                                if(barDataSet.values.isNotEmpty()) {
+                                    allBarData.add(barDataSet)
+                                }
+
+                            }
                         }
 
                     }
@@ -198,6 +212,9 @@ class ChartStyle(context: Context) {
             if(!allScatter_Data.isEmpty()) {
                 combinedData.setData(ScatterData(allScatter_Data))
             }
+            if(!allBarData.isEmpty()){
+                combinedData.setData(BarData(allBarData))
+            }
 
         }
 
@@ -223,14 +240,32 @@ class ChartStyle(context: Context) {
             var axisDependency: YAxis.AxisDependency = YAxis.AxisDependency.RIGHT,
             var displayText: Boolean = false,
             var textSize: Float = 10F,
-            var textColor: Int = 0
+            var textColor: Int = 0,
+            var type : Overlay.IndicatorType = Overlay.IndicatorType.Line
     )
 
     fun updateLineGraph(allLineGraphStyle: ArrayList<LineGraphStyle>, mChart: CombinedChart?, moveViewToEnd: Boolean = false){
         val allLineData = ArrayList<ILineDataSet>()
+        val allBarData = ArrayList<IBarDataSet>()
         val combinedData = CombinedData()
         for(lineGraphStyle in allLineGraphStyle){
-            AddOneLine(lineGraphStyle.lineData,lineGraphStyle.lineStyle,allLineData)
+            if(lineGraphStyle.lineStyle.type == Overlay.IndicatorType.Line) {
+                AddOneLine(lineGraphStyle.lineData, lineGraphStyle.lineStyle, allLineData)
+            }else{
+                var barList = ArrayList<BarEntry>()
+                for(item in lineGraphStyle.lineData){
+                    barList.add(BarEntry(item.x,item.y))
+                }
+                val barDataSet = BarDataSet(barList,lineGraphStyle.lineStyle.lineLabel)
+                barDataSet.color = lineGraphStyle.lineStyle.lineColor
+                barDataSet.axisDependency = YAxis.AxisDependency.RIGHT
+                if(barDataSet.values.isNotEmpty()) {
+                    allBarData.add(barDataSet)
+                }
+            }
+        }
+        if(allBarData.isNotEmpty()){
+            combinedData.setData(BarData(allBarData))
         }
 
         if(allLineData.isNotEmpty()) {
