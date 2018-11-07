@@ -143,6 +143,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        data.endTA = true
+
+
         data.lastOrientation = resources.configuration.orientation
         println("_____ON_CREATE______ data.runningOrientationLoad: ${data.runningOrientationLoad}")
 
@@ -215,7 +218,7 @@ class MainActivity : AppCompatActivity() {
                         return
                     }
 
-                    if (data.runningTA) data.endTA = true
+
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     editor.putInt(TIME_PERIOD, position)
@@ -223,6 +226,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (data.saved_time_period != position) {
                         data.saved_time_period = position
+                        if (data.runningTA) data.endTA = true
                         //Update the chart with the latest data from the web
                         println("update graph from period change")
                         updateCurrentGraphFromWebData(position, data.coinSelected, data.exchangeSelected, data.currencySelected, false)
@@ -337,7 +341,6 @@ class MainActivity : AppCompatActivity() {
                         spinnerCoinFirstRun = false
                         return
                     }
-                    if (data.runningTA) data.endTA = true
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     val coinPair = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
@@ -377,6 +380,7 @@ class MainActivity : AppCompatActivity() {
                         //                        updateCurrencyList()
                         //                println("update graph from coin change")
                         //Update the chart with the latest data from the web
+                        if (data.runningTA) data.endTA = true
                         updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true && !data.isInitialLoadComplete)
 
                     }
@@ -398,7 +402,7 @@ class MainActivity : AppCompatActivity() {
                         spinnerExchangeFirstRun = false
                         return
                     }
-                    if (data.runningTA) data.endTA = true
+
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     val row = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
@@ -421,6 +425,7 @@ class MainActivity : AppCompatActivity() {
                         //                        updateCurrencyList()
                         println("update graph from exchange change")
                         //Update the chart with the latest data from the web
+                        if (data.runningTA) data.endTA = true
                         updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
                     }
 
@@ -527,7 +532,7 @@ class MainActivity : AppCompatActivity() {
             val list = ArrayList<Overlay>()
             val allList = HashMap<Overlay.Kind, Overlay>()
             for (item in Overlay.Kind.values()) {
-                println("item " + item.name)
+                //println("item " + item.name)
                 var overlay = Overlay(context,item)
                 if (overlay.kindData.visible) {
                     list.add(overlay)
@@ -1115,23 +1120,21 @@ class MainActivity : AppCompatActivity() {
                         data.runningTA = false
                         updateIndicatorTitle()
                     }
-
-                    AsyncTask.execute {
-                        data.endTA = false
-                        data.runningTA = true
-                        data.all_ta[position].updateNonSelectedItems()
-                        data.endTA = false
-                        data.runningTA = false
-                    }
                 }
-
-
             }
         }else {
             runOnUiThread {
                 println("TA Done, time to update recycler")
                 updateIndicatorTitle()
             }
+        }
+
+        AsyncTask.execute {
+            data.endTA = false
+            data.runningTA = true
+            data.all_ta[position].updateNonSelectedItems()
+            data.endTA = false
+            data.runningTA = false
         }
 
         println("{updatedGraph} Chart list size: " + data.chartList.size)

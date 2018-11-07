@@ -128,9 +128,11 @@ class TechnicalAnalysis {
             overlayList.add(overlay.kind)
         }
         for (overlayKind in overlayList) {
+            println("Loading $overlayKind")
             val overlay = OverlayAdapter.data.all[overlayKind]!!
             if (MainActivity.data.endTA) {
                 println("Ending non selected items recalculation")
+                MainActivity.data.endTA = false
                 break
             }
             // Possible enhancement that the main kind

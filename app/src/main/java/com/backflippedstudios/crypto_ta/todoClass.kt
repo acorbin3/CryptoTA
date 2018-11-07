@@ -14,16 +14,18 @@ class todoClass {
     //      DONE 11/1/2018: MACD- Ensure Short is greater than Long,,  Trailing Stop Loss
     //      DONE 11/4/2018 - Periodical Growth, SimpleLinearRegression, DstandaDeviation, StandardErro, Variance Indicator
     //DONE 11/5/2018 - Issue - When backgroung thread is loading, and we change 1 indicator param, it kills the backgroud thream
-    //TODO - Update screenshots on play store
-    //TODO - Fix rotating to landscape mode when background thread nonItems is loading.
+    // DONE 11/3/2018 - BUG - When PPO long term is greater than short term this will throw an error
+    //    java.lang.IllegalArgumentException: Long term period count must be greater than short term period count
+    //    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
+    //DONE 11/6/2018 - Update screenshots on play store
+    //DONE 11/6/2018 - Fix rotating to landscape mode when background thread nonItems is loading.
+    //TODO - Add to Amazon store
 
     //TODO - Add splash screen with loading
 
     //TODO - feedback button
 
-    // DONE 11/3/2018 - BUG - When PPO long term is greater than short term this will throw an error
-    //    java.lang.IllegalArgumentException: Long term period count must be greater than short term period count
-    //    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
+
 
     // Release 2
 

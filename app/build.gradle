@@ -9,8 +9,8 @@ android {
         applicationId "com.backflippedstudios.crypto_ta"
         minSdkVersion 19
         targetSdkVersion 28
-        versionCode 24
-        versionName "1.3.13"
+        versionCode 25
+        versionName "1.3.14"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
     }
