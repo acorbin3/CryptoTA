@@ -46,6 +46,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.QuerySnapshot
+import com.jakewharton.threetenabp.AndroidThreeTen
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.io.File
@@ -145,6 +146,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         data.endTA = true
 
+        AndroidThreeTen.init(this);
 
         data.lastOrientation = resources.configuration.orientation
         println("_____ON_CREATE______ data.runningOrientationLoad: ${data.runningOrientationLoad}")
@@ -466,7 +468,7 @@ class MainActivity : AppCompatActivity() {
             timer.schedule(object : TimerTask() {
                 override fun run() {
                     try {
-                        var newPrice = data.dataSource.getCurrentValue(data.coinSelected,
+                        val newPrice = data.dataSource.getCurrentValue(data.coinSelected,
                                 data.exchangeSelected,
                                 data.currencySelected)
                         newPrice.toString().replace(",", ".").toFloat()
@@ -476,7 +478,7 @@ class MainActivity : AppCompatActivity() {
                         newUSDPrice.toString().replace(",", ".").toFloat()
 
                         var color: Int = ContextCompat.getColor(context, R.color.md_white_1000)
-                        var oldPrice: Float = data.currentCoinRatio
+                        val oldPrice: Float = data.currentCoinRatio
                         if (oldPrice == newPrice) {
                             color = ContextCompat.getColor(context, R.color.md_white_1000)
                         } else if (oldPrice > newPrice) {

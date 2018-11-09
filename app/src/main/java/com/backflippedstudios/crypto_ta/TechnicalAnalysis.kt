@@ -1052,11 +1052,15 @@ class TechnicalAnalysis {
     private fun updateDoubleEMA(timeFrame: Int) {
         val kind = Double_EMA
         this.getEntryData(kind).clear()
-        val _data = DoubleEMAIndicator(this.closePrice, timeFrame)
+        try {
+            val _data = DoubleEMAIndicator(this.closePrice, timeFrame)
 
-        for (j in 0 until closePrice.timeSeries.tickCount) {
-            if (j < _data.timeSeries.tickCount)
-                this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
+            for (j in 0 until closePrice.timeSeries.tickCount) {
+                if (j < _data.timeSeries.tickCount)
+                    this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
+            }
+        }catch (e: Exception){
+
         }
     }
 

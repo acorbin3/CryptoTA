@@ -142,7 +142,7 @@ class DataSource {
                     }
 
                     var i = Instant.ofEpochSecond(time.toLong())
-                    val z = i.atZone(ZoneId.of("America/New_York"))
+                    val z = i.atZone(ZoneId.systemDefault())
                     //clean open and close betwwen last 2 ticks so we don't have gaps
                     if(lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
                         open = lastTick.closePrice.toDouble()
