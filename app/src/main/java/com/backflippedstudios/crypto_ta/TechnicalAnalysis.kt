@@ -1,5 +1,6 @@
 package com.backflippedstudios.crypto_ta
 
+import android.os.Bundle
 import com.backflippedstudios.crypto_ta.Overlay.Kind.*
 import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
 import com.github.mikephil.charting.data.BarEntry
@@ -848,7 +849,7 @@ class TechnicalAnalysis {
                     this.getEntryData(kind).add(Entry(i.toFloat(), value))
                 }
             }
-        } catch (E: Exception) {
+        } catch (E: StackOverflowError) {
 
         }
     }
@@ -1059,8 +1060,11 @@ class TechnicalAnalysis {
                 if (j < _data.timeSeries.tickCount)
                     this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
             }
-        }catch (e: Exception){
-
+        }catch (e: StackOverflowError){
+            val bundle = Bundle()
+            bundle.putString("uuid", MainActivity.data.uuid)
+            bundle.putString("Function", "updateDoubleEMA")
+            MainActivity.data.mFirebaseAnalytics.logEvent("StackOverflow", bundle)
         }
     }
 

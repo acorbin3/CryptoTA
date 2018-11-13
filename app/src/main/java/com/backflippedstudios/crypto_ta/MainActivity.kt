@@ -47,6 +47,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.QuerySnapshot
 import com.jakewharton.threetenabp.AndroidThreeTen
+import org.rm3l.maoni.Maoni
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.io.File
@@ -197,6 +198,20 @@ class MainActivity : AppCompatActivity() {
                 requestWritePermission()
 
             }
+        }
+        iv_feedback.setOnClickListener {
+            val bundle = Bundle()
+            bundle.putString("uuid", MainActivity.data.uuid)
+            MainActivity.data.mFirebaseAnalytics.logEvent("FeebackSelected", bundle)
+            var mMaoniBuilder = Maoni.Builder(this,"${BuildConfig.APPLICATION_ID}.fileprovider")
+                    .withSharedPreferences("${this.packageName}_preferences")
+            var mMaoni = mMaoniBuilder.withScreenCapturingFeature(true)
+                    .withDefaultToEmailAddress("acorbin3@gmail.com")
+                    .withLogsCapturingFeature(true)
+                    .build()
+            mMaoni.start(this)
+
+
         }
 
         //Init Cloudinary
@@ -708,6 +723,10 @@ class MainActivity : AppCompatActivity() {
 //  .dispatch();
 
     private fun createScreenshotAndSendImage(it: View, resizeForVertical: Boolean) {
+        val bundle = Bundle()
+        bundle.putString("uuid", MainActivity.data.uuid)
+        bundle.putString("CoinPair", data.coinSelected + "/" + data.currencySelected)
+        MainActivity.data.mFirebaseAnalytics.logEvent("SavingScreenshot", bundle)
         var bitmap = screenShot(it.rootView)
 //        println("Before Bitmap size: h ${bitmap.height} w ${bitmap.width}")
 

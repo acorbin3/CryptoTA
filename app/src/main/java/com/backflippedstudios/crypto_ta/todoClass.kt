@@ -6,13 +6,14 @@ package com.backflippedstudios.crypto_ta
 class todoClass {
 
 
+    //DONE 11/13/2018 - feedback button
+    //DONE 11/13/2018 - Attempted to fix stack overflow on TechAnalysis for DoubleEMA
 
 
-    //TODO - Add to Amazon store
 
     //TODO - Add splash screen with loading
 
-    //TODO - feedback button
+
 
 
 
@@ -42,6 +43,7 @@ class todoClass {
     //    at org.ta4j.core.indicators.PPOIndicator.<init>(PPOIndicator.java:41)
     //DONE 11/6/2018 - Update screenshots on play store
     //DONE 11/6/2018 - Fix rotating to landscape mode when background thread nonItems is loading.
+    //DONE - Add to Amazon store
 
     //Release 1.3.13 10/31/2018
     //DONE 10/25/2018 - Fibonacci Reversal indicator
