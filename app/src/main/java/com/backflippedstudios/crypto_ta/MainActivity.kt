@@ -46,6 +46,8 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.QuerySnapshot
+import com.jakewharton.threetenabp.AndroidThreeTen
+import org.rm3l.maoni.Maoni
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.format.DateTimeFormatter
 import java.io.File
@@ -143,6 +145,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        data.endTA = true
+
+        AndroidThreeTen.init(this);
+
         data.lastOrientation = resources.configuration.orientation
         println("_____ON_CREATE______ data.runningOrientationLoad: ${data.runningOrientationLoad}")
 
@@ -193,6 +199,20 @@ class MainActivity : AppCompatActivity() {
 
             }
         }
+        iv_feedback.setOnClickListener {
+            val bundle = Bundle()
+            bundle.putString("uuid", MainActivity.data.uuid)
+            MainActivity.data.mFirebaseAnalytics.logEvent("FeebackSelected", bundle)
+            var mMaoniBuilder = Maoni.Builder(this,"${BuildConfig.APPLICATION_ID}.fileprovider")
+                    .withSharedPreferences("${this.packageName}_preferences")
+            var mMaoni = mMaoniBuilder.withScreenCapturingFeature(true)
+                    .withDefaultToEmailAddress("acorbin3@gmail.com")
+                    .withLogsCapturingFeature(true)
+                    .build()
+            mMaoni.start(this)
+
+
+        }
 
         //Init Cloudinary
 //        var config = HashMap<String,String>()
@@ -215,7 +235,7 @@ class MainActivity : AppCompatActivity() {
                         return
                     }
 
-                    if (data.runningTA) data.endTA = true
+
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     editor.putInt(TIME_PERIOD, position)
@@ -223,6 +243,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (data.saved_time_period != position) {
                         data.saved_time_period = position
+                        if (data.runningTA) data.endTA = true
                         //Update the chart with the latest data from the web
                         println("update graph from period change")
                         updateCurrentGraphFromWebData(position, data.coinSelected, data.exchangeSelected, data.currencySelected, false)
@@ -337,7 +358,6 @@ class MainActivity : AppCompatActivity() {
                         spinnerCoinFirstRun = false
                         return
                     }
-                    if (data.runningTA) data.endTA = true
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     val coinPair = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
@@ -377,6 +397,7 @@ class MainActivity : AppCompatActivity() {
                         //                        updateCurrencyList()
                         //                println("update graph from coin change")
                         //Update the chart with the latest data from the web
+                        if (data.runningTA) data.endTA = true
                         updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true && !data.isInitialLoadComplete)
 
                     }
@@ -398,7 +419,7 @@ class MainActivity : AppCompatActivity() {
                         spinnerExchangeFirstRun = false
                         return
                     }
-                    if (data.runningTA) data.endTA = true
+
                     //Update shared preferences
                     val editor = data.prefs!!.edit()
                     val row = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
@@ -421,6 +442,7 @@ class MainActivity : AppCompatActivity() {
                         //                        updateCurrencyList()
                         println("update graph from exchange change")
                         //Update the chart with the latest data from the web
+                        if (data.runningTA) data.endTA = true
                         updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
                     }
 
@@ -461,7 +483,7 @@ class MainActivity : AppCompatActivity() {
             timer.schedule(object : TimerTask() {
                 override fun run() {
                     try {
-                        var newPrice = data.dataSource.getCurrentValue(data.coinSelected,
+                        val newPrice = data.dataSource.getCurrentValue(data.coinSelected,
                                 data.exchangeSelected,
                                 data.currencySelected)
                         newPrice.toString().replace(",", ".").toFloat()
@@ -471,7 +493,7 @@ class MainActivity : AppCompatActivity() {
                         newUSDPrice.toString().replace(",", ".").toFloat()
 
                         var color: Int = ContextCompat.getColor(context, R.color.md_white_1000)
-                        var oldPrice: Float = data.currentCoinRatio
+                        val oldPrice: Float = data.currentCoinRatio
                         if (oldPrice == newPrice) {
                             color = ContextCompat.getColor(context, R.color.md_white_1000)
                         } else if (oldPrice > newPrice) {
@@ -527,7 +549,7 @@ class MainActivity : AppCompatActivity() {
             val list = ArrayList<Overlay>()
             val allList = HashMap<Overlay.Kind, Overlay>()
             for (item in Overlay.Kind.values()) {
-                println("item " + item.name)
+                //println("item " + item.name)
                 var overlay = Overlay(context,item)
                 if (overlay.kindData.visible) {
                     list.add(overlay)
@@ -701,6 +723,10 @@ class MainActivity : AppCompatActivity() {
 //  .dispatch();
 
     private fun createScreenshotAndSendImage(it: View, resizeForVertical: Boolean) {
+        val bundle = Bundle()
+        bundle.putString("uuid", MainActivity.data.uuid)
+        bundle.putString("CoinPair", data.coinSelected + "/" + data.currencySelected)
+        MainActivity.data.mFirebaseAnalytics.logEvent("SavingScreenshot", bundle)
         var bitmap = screenShot(it.rootView)
 //        println("Before Bitmap size: h ${bitmap.height} w ${bitmap.width}")
 
@@ -1115,17 +1141,7 @@ class MainActivity : AppCompatActivity() {
                         data.runningTA = false
                         updateIndicatorTitle()
                     }
-
-                    AsyncTask.execute {
-                        data.endTA = false
-                        data.runningTA = true
-                        data.all_ta[position].updateNonSelectedItems()
-                        data.endTA = false
-                        data.runningTA = false
-                    }
                 }
-
-
             }
         }else {
             runOnUiThread {
@@ -1134,12 +1150,20 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        AsyncTask.execute {
+            data.endTA = false
+            data.runningTA = true
+            data.all_ta[position].updateNonSelectedItems()
+            data.endTA = false
+            data.runningTA = false
+        }
+
         println("{updatedGraph} Chart list size: " + data.chartList.size)
         updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
 
         for (overlay in OverlayAdapter.data.list) {
             if (overlay.separateChart and overlay.selected) {
-                updateChartStatus(ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
+                updateChartStatus(ChartStatusData.Status.TOGGLE_CHART, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
             }
         }
 

@@ -211,6 +211,15 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             }
         }
 
+        fun getType(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): Overlay.IndicatorType{
+            return if (kind == parentKind) {
+                data.all[kind]?.allIndicatorInfo?.get(0)?.type!!
+
+            } else {
+                data.all[parentKind]?.allIndicatorInfo?.get(colorIndex)?.type!!
+            }
+        }
+
         fun getLabel(kind: Overlay.Kind, parentKind: Overlay.Kind, colorIndex: Int): String? {
             return if (kind == parentKind) {
                 data.all[kind]?.allIndicatorInfo?.get(0)?.label
@@ -883,6 +892,32 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             }
 
             if (!cameFromET && (valuesChanged or forceUpdate)) {
+                if((kind == Overlay.Kind.PPO && valuesIndex == 0) || kind == Overlay.Kind.D_PPO_ShortTerm){
+                    val long = OverlayAdapter.getLongTerm(Overlay.Kind.PPO)
+                    if(long < editValue){
+                        return false
+                    }
+                }
+                if((kind == Overlay.Kind.PPO && valuesIndex == 1) || kind == Overlay.Kind.D_PPO_LongTerm){
+                    val short = OverlayAdapter.getShortTerm(Overlay.Kind.PPO)
+                    if(short > editValue){
+                        return false
+                    }
+                }
+                //Special case D_MACD_Timeframe_Long needs to be > D_MACD_Timeframe_Short
+                if((kind == Overlay.Kind.MACD && valuesIndex == 0) || kind == Overlay.Kind.D_MACD_Timeframe_Short){
+                    val long = OverlayAdapter.getTimeframe2(Overlay.Kind.MACD)
+                    if(long < editValue){
+                        return false
+                    }
+                }
+
+                if((kind == Overlay.Kind.MACD && valuesIndex == 1)|| kind == Overlay.Kind.D_MACD_Timeframe_Long){
+                    val short = OverlayAdapter.getTimeframe(Overlay.Kind.MACD)
+                    if(short > editValue){
+                        return false
+                    }
+                }
                 //Update the edit text that was edited by the user
                 setValue(position, editValue, valuesIndex)
 
@@ -937,7 +972,6 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                         //Update chart
                         if(childItemIsSeperateChart || data.list[updateIndex].separateChart){
                             updateChartStatus(ChartStatusData.Status.UPDATE_CHART,
-                                    ChartStatusData.Type.SEPARATE_CHART,
                                     data.list[updateIndex].kindData.parentKind)
                         }else {
                             updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS,
