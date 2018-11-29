@@ -1,4 +1,6 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
+
+import com.backflippedstudios.crypto_ta.Overlay
 
 class ChartStatusData(var status: Status, var type: Type, var kind: Overlay.Kind, var recalculate: Boolean = false){
     enum class Status{

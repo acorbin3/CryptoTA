@@ -1,7 +1,6 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
 
-import android.os.Parcel
-import android.os.Parcelable
+import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
 
@@ -11,10 +10,10 @@ class VolumeBarDataSet( yVals: List<BarEntry>,label:String): BarDataSet(yVals,la
     }
 
     override fun getColor(index: Int): Int {
-        //Look at the data from MainActivity to see if the volue was buy or sell volume.
-        if (index < MainActivity.data.all_ta[MainActivity.data.saved_time_period].ticksDataArray.size) {
-            val open = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ticksDataArray[index].openPrice
-            val close = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ticksDataArray[index].closePrice
+        //Look at the data from DetailedAnalysisFrag to see if the volue was buy or sell volume.
+        if (index < DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ticksDataArray.size) {
+            val open = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ticksDataArray[index].openPrice
+            val close = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ticksDataArray[index].closePrice
 
             return when {
                 open > close -> mColors[0]  // Red for sell

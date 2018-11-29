@@ -14,8 +14,12 @@ import android.view.animation.OvershootInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import com.backflippedstudios.crypto_ta.*
+import com.backflippedstudios.crypto_ta.customchartmods.ChartStatusData
+import com.backflippedstudios.crypto_ta.customchartmods.ChartStyle
+import com.backflippedstudios.crypto_ta.customchartmods.MirrorChartGestureListener
 import com.backflippedstudios.crypto_ta.data.DataSource
 import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
+import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.backflippedstudios.crypto_ta.xaxisformats.XAxisValueFormatter
 import com.github.mikephil.charting.charts.Chart
 import com.github.mikephil.charting.charts.CombinedChart
@@ -66,19 +70,19 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
     private fun calculateMainChartRatio(): Float {
         var sizeRatio = 1F
-        if (MainActivity.data.chartList.size == 2) {
+        if (DetailedAnalysisFrag.data.chartList.size == 2) {
             sizeRatio = 0.8F
-        } else if (MainActivity.data.chartList.size == 3) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 3) {
             sizeRatio = 0.65F
-        } else if (MainActivity.data.chartList.size == 4) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 4) {
             sizeRatio = 0.58F
-        } else if (MainActivity.data.chartList.size == 5) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 5) {
             sizeRatio = 0.44F
-        } else if (MainActivity.data.chartList.size == 6) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 6) {
             sizeRatio = 0.44F
-        } else if (MainActivity.data.chartList.size == 7) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 7) {
             sizeRatio = 0.44F
-        } else if (MainActivity.data.chartList.size == 8) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 8) {
             sizeRatio = 0.4F
         }
         return sizeRatio
@@ -86,19 +90,19 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
     private fun calculateOtherChartRatio(): Float {
         var sizeRatio = 1F
-        if (MainActivity.data.chartList.size == 2) {
+        if (DetailedAnalysisFrag.data.chartList.size == 2) {
             sizeRatio = 0.2F
-        } else if (MainActivity.data.chartList.size == 3) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 3) {
             sizeRatio = 0.175F
-        } else if (MainActivity.data.chartList.size == 4) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 4) {
             sizeRatio = 0.14F
-        } else if (MainActivity.data.chartList.size == 5) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 5) {
             sizeRatio = 0.14F
-        } else if (MainActivity.data.chartList.size == 6) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 6) {
             sizeRatio = 0.112F
-        } else if (MainActivity.data.chartList.size == 7) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 7) {
             sizeRatio = 0.09333F
-        } else if (MainActivity.data.chartList.size == 8) {
+        } else if (DetailedAnalysisFrag.data.chartList.size == 8) {
             sizeRatio = 0.08571F
         }
         return sizeRatio
@@ -144,18 +148,18 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
             }
             ChartStatusData.Status.UPDATE_CANDLESTICKS -> {
                 ChartStyle(context).updateCandlestickGraph(
-                        MainActivity.data.all_ta[MainActivity.data.saved_time_period],
+                        DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                         combinedViewHolder.chart)
                 //Next line syncs the inital zoom on all charts
-                MainActivity.data.matrixLocation = combinedViewHolder.chart.viewPortHandler.matrixTouch
+                DetailedAnalysisFrag.data.matrixLocation = combinedViewHolder.chart.viewPortHandler.matrixTouch
             }
             ChartStatusData.Status.UPDATE_OVERLAYS -> {
                 println("Updating Overlays from ChartList Adapter")
                 combinedViewHolder.chart.fillInbetweenLines = true
-//                MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
+//                DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].recalculateData(list[position].kind)
                 ChartStyle(context).updateOverlays(
                         OverlayAdapter.data.list,
-                        MainActivity.data.all_ta[MainActivity.data.saved_time_period],
+                        DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                         combinedViewHolder.chart)
                 list[position].status = ChartStatusData.Status.LOADING_COMPLETE
 
@@ -168,7 +172,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
                     Overlay.Kind.Volume_Bars -> {
                         ChartStyle(context).updateVolumeGraph(
-                                MainActivity.data.all_ta[MainActivity.data.saved_time_period],
+                                DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                                 combinedViewHolder.chart,
                                 true
                         )
@@ -179,14 +183,14 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                     }
                 }
             }
-            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART,ChartStatusData.Status.LOADING_COMPLETE -> {
+            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART, ChartStatusData.Status.LOADING_COMPLETE -> {
                 if(list[position].status == ChartStatusData.Status.UPDATE_CHART) {
-                    MainActivity.data.all_ta[MainActivity.data.saved_time_period].recalculateData(list[position].kind)
+                    DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].recalculateData(list[position].kind)
                 }
                 when (list[position].kind) {
                     Overlay.Kind.Volume_Bars -> {
                         ChartStyle(context).updateVolumeGraph(
-                                MainActivity.data.all_ta[MainActivity.data.saved_time_period],
+                                DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                                 combinedViewHolder.chart,
                                 true
                         )
@@ -209,7 +213,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                 val filled = OverlayAdapter.getfilled(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
                                 val filledColor = OverlayAdapter.getfilledColor(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
                                 val type = OverlayAdapter.getType(dItem.kind, dItem.kindData.parentKind, dItem.kindData.colorIndex)
-                                entryData = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(dItem.kind)
+                                entryData = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(dItem.kind)
                                 if (entryData.isNotEmpty()) {
                                     allLineGraphStyle.add(ChartStyle.LineGraphStyle(entryData,
                                             ChartStyle.LineStyle(
@@ -270,7 +274,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
         }
 
         //Update valueIndex of graph
-        MainActivity.data.matrixLocation?.getValues(srcVals)
+        DetailedAnalysisFrag.data.matrixLocation?.getValues(srcVals)
         dstMatrix = combinedViewHolder.chart.viewPortHandler.matrixTouch
         dstMatrix.getValues(dstVals)
         dstVals[Matrix.MSCALE_X] = srcVals[Matrix.MSCALE_X]
@@ -293,8 +297,8 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                         val legendList: MutableList<LegendEntry> = arrayListOf()
                         when (chartStatusData.type) {
                             ChartStatusData.Type.MAIN_CHART -> {
-                                if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getCandlestickData(Overlay.Kind.CandleStick).size > e.x.toInt()) {
-                                    val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getCandlestickData(Overlay.Kind.CandleStick)[e.x.toInt()]
+                                if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getCandlestickData(Overlay.Kind.CandleStick).size > e.x.toInt()) {
+                                    val values = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getCandlestickData(Overlay.Kind.CandleStick)[e.x.toInt()]
                                     updatedText = "Candle Stick O ${values.open} H ${values.high} L ${values.low} C ${values.close}"
                                     legendList.add(LegendEntry(updatedText, Legend.LegendForm.NONE, 9f, Float.NaN, null, Color.WHITE))
                                 }
@@ -307,11 +311,11 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
 
                                             Overlay.Kind.ZigZag -> {
-                                                if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.ZigZag).size > 0) {
+                                                if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(Overlay.Kind.ZigZag).size > 0) {
                                                     lateinit var candidateBefore: Entry
                                                     lateinit var candidateAfter: Entry
                                                     var foundAfter = false
-                                                    for (entry in MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.ZigZag)) {
+                                                    for (entry in DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(Overlay.Kind.ZigZag)) {
                                                         if (entry.x > e.x.toInt()) {
                                                             candidateAfter = entry
                                                             foundAfter = true
@@ -334,8 +338,8 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                                             }
 
                                             Overlay.Kind.Exponential_MA_Ribbon -> {
-                                                if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).size > 0) {
-                                                    MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).forEachIndexed { index, arrayList ->
+                                                if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).size > 0) {
+                                                    DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryDataList(Overlay.Kind.Exponential_MA_Ribbon).forEachIndexed { index, arrayList ->
                                                         if (arrayList.size > e.x.toInt()) {
                                                             val values = arrayList[e.x.toInt()]
                                                             updatedText = "EMA $index ${values.y} "
@@ -367,10 +371,10 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
                         if (legendList.isNotEmpty()) {
                             var timeStr = "date"
-                            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.endIndex!! > e.x.toInt()) {
-                                val curTick: Tick? = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.getTick(e.x.toInt())
+                            if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts?.endIndex!! > e.x.toInt()) {
+                                val curTick: Tick? = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts?.getTick(e.x.toInt())
 
-                                when (MainActivity.data.saved_time_period) {
+                                when (DetailedAnalysisFrag.data.saved_time_period) {
                                     DataSource.Interval._1MIN.ordinal, DataSource.Interval._3MIN.ordinal,
                                     DataSource.Interval._5MIN.ordinal, DataSource.Interval._15MIN.ordinal,
                                     DataSource.Interval._30MIN.ordinal, DataSource.Interval._1HOUR.ordinal,
@@ -446,25 +450,25 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
     private fun getSelectedValueText(item: Overlay, e: Entry, updatedText: String, legendList: MutableList<LegendEntry>): String {
         var updatedText1 = updatedText
         if (item.kindData.hasData) {
-            if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt()) {
+            if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt()) {
 
                 var index = e.x.toInt()
                 if (item.kind == Overlay.Kind.D_Ich_Cloud_Lead_A || item.kind == Overlay.Kind.D_Ich_Cloud_Lead_B) {
                     var laggingPeriod = OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt()
                     index = e.x.toInt() - laggingPeriod
                 } else if (item.kind == Overlay.Kind.Keltner_Channel) {
-                    val size = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).size
+                    val size = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).size
                     if (size > 0) {
-                        val lastVal = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).last().x
+                        val lastVal = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(Overlay.Kind.D_KC_Lower).last().x
                         val offset = lastVal - size
                         index = ((e.x.toInt() - offset.absoluteValue).toInt())
                     }
                 }
-                if (MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind).size > index && index > 0) {
+                if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(item.kind).size > index && index > 0) {
                     try {
                         val color: Int = OverlayAdapter.getColor(item.kind, item.kindData.parentKind, item.kindData.colorIndex)!!
                         val index = e.x.toInt()
-                        val values = MainActivity.data.all_ta[MainActivity.data.saved_time_period].getEntryData(item.kind)[index]
+                        val values = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(item.kind)[index]
                         updatedText1 = OverlayAdapter.getSelectedLegendText(item.kind, item.kindData.parentKind, item.kindData.colorIndex) + " " + values.y
                         legendList.add(LegendEntry(updatedText1, Legend.LegendForm.CIRCLE, 9f, Float.NaN, null, color))
                     } catch (exception: Exception) {
@@ -478,24 +482,24 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
 
     private fun hideIndicatorsList(view: View?) {
         println("Hiding indicators list from chart click")
-        MainActivity.data.ivDrawer.animate()
+        DetailedAnalysisFrag.data.ivDrawer.animate()
                 .rotation(0F)
                 .alpha(1F)
                 .duration = 200
-        MainActivity.data.ivCollapseArrow.animate()
+        DetailedAnalysisFrag.data.ivCollapseArrow.animate()
                 .rotation(0F)
                 .alpha(0F)
                 .duration = 200
 
-        MainActivity.data.rvIndicatorsOverlays.animate()
+        DetailedAnalysisFrag.data.rvIndicatorsOverlays.animate()
                 .alpha(0.0F)
-                .translationX(MainActivity.data.displayWidth.toFloat())
+                .translationX(DetailedAnalysisFrag.data.displayWidth.toFloat())
                 .setDuration(500)
                 .setInterpolator(OvershootInterpolator())
                 .setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator?) {
                         super.onAnimationEnd(animation)
-                        MainActivity.data.rvIndicatorsOverlays.visibility = View.GONE
+                        DetailedAnalysisFrag.data.rvIndicatorsOverlays.visibility = View.GONE
                     }
                 }
                 )

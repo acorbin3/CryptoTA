@@ -1,15 +1,15 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
 
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
 import android.support.v4.content.ContextCompat
-import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
+import com.backflippedstudios.crypto_ta.Overlay
+import com.backflippedstudios.crypto_ta.R
+import com.backflippedstudios.crypto_ta.TechnicalAnalysis
 import com.backflippedstudios.crypto_ta.xaxisformats.MultiLineXAxisRenderer
 import com.backflippedstudios.crypto_ta.xaxisformats.XAxisValueFormatter
-import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.CombinedChart
-import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.charts.ScatterChart
 import com.github.mikephil.charting.components.Legend
 import com.github.mikephil.charting.components.XAxis
@@ -27,7 +27,7 @@ import java.util.ArrayList
 class ChartStyle(context: Context) {
     private var context: Context = context
 
-    fun updateCandlestickGraph(ta: TechnicalAnalysis,mChart: CombinedChart?){
+    fun updateCandlestickGraph(ta: TechnicalAnalysis, mChart: CombinedChart?){
         val combinedData = CombinedData()
         //Do candlestick data
         val candleDataSet = CandleDataSet(ta.getCandlestickData(Overlay.Kind.CandleStick) as MutableList<CandleEntry>?, "Candlestick Data Set")
@@ -48,6 +48,20 @@ class ChartStyle(context: Context) {
         }
     }
 
+    private fun marketCapDefaults(it: CombinedChart){
+        it.legend.isEnabled = false
+        it.setDrawBorders(false)
+        it.isAutoScaleMinMaxEnabled = true
+        it.xAxis.position = XAxis.XAxisPosition.BOTTOM_INSIDE
+        it.xAxis.isEnabled = false
+        it.axisLeft.isEnabled = false
+        it.axisRight.isEnabled = false
+        it.isHighlightPerTapEnabled = false
+        it.description.isEnabled = false
+        it.setViewPortOffsets(0F, 0F, 0F, 0F)
+        it.invalidate()
+        it.moveViewToX(it.data.xMax)
+    }
     private fun chartDefaults(it: CombinedChart, drawXAxis: Boolean = true) {
         it.legend.setDrawInside(true)
         it.legend.verticalAlignment = Legend.LegendVerticalAlignment.TOP
@@ -83,6 +97,51 @@ class ChartStyle(context: Context) {
         it.description.isEnabled = false
         it.axisRight.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
         it.axisRight.yOffset =7F
+    }
+
+    fun updateMarketCapGraph(entryList: ArrayList<Entry>, mChart: CombinedChart?){
+        val combinedData = CombinedData()
+        val allLine_Data = ArrayList<ILineDataSet>()
+        val threshold = entryList.first()
+        var lastItem  = entryList.first()
+        var segment  = ArrayList<Entry>()
+        //Make multiple sections based on the first close. Above is green, below is red
+        for(entry in entryList){
+            if ((lastItem.y >= threshold.y && entry.y >= threshold.y)
+                    ||(lastItem.y < threshold.y && entry.y < threshold.y)){
+                segment.add(entry)
+            }else{
+                segment.add(entry)
+                if(lastItem.y >= threshold.y) {
+                    AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_green_500), allLine_Data)
+                }else{
+                    AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_red_500), allLine_Data)
+                }
+                segment = ArrayList()
+                segment.add(entry)
+
+            }
+            lastItem = entry
+        }
+        if(lastItem.y >= threshold.y) {
+            AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_green_500), allLine_Data)
+        }else{
+            AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_red_500), allLine_Data)
+        }
+//        AddOneLine(entryList,"",ContextCompat.getColor(context, R.color.md_blue_400),allLine_Data)
+
+
+        if(!allLine_Data.isEmpty()) {
+            combinedData.setData(LineData(allLine_Data))
+        }
+        if(combinedData.allData.size > 0) {
+
+            mChart?.let {
+                it.data = combinedData
+                marketCapDefaults(it)
+                it.invalidate()
+            }
+        }
     }
 
     fun updateOverlays(overlays: ArrayList<Overlay>, ta: TechnicalAnalysis, mChart: CombinedChart?){
@@ -132,7 +191,7 @@ class ChartStyle(context: Context) {
                                                 }
 //                                                println("Doesnt match, adding to list. Segmet size ${segment.size}")
                                                 AddOneLine(segment, overlay.allIndicatorInfo[i].label, overlay.allIndicatorInfo[i].color, allLine_Data)
-                                                segment = ArrayList<Entry>()
+                                                segment = ArrayList() // Using #.clear removes last stuff
                                             }
 //                                            println("Adding ${entry.x},${entry.y}")
                                             segment.add(entry)
@@ -230,7 +289,7 @@ class ChartStyle(context: Context) {
     }
 
     //line data, how it wants to be displayed (filled, colors, dotted line?),label
-    data class LineGraphStyle(var lineData: ArrayList<Entry>,var lineStyle: LineStyle )
+    data class LineGraphStyle(var lineData: ArrayList<Entry>,var lineStyle: LineStyle)
     data class LineStyle(
             var lineLabel: String = "",
             var lineColor: Int = 0,
@@ -288,9 +347,9 @@ class ChartStyle(context: Context) {
             }
         }
     }
-    fun updateVolumeGraph(ta: TechnicalAnalysis,mChart: CombinedChart?, moveViewToEnd: Boolean = false){
+    fun updateVolumeGraph(ta: TechnicalAnalysis, mChart: CombinedChart?, moveViewToEnd: Boolean = false){
         val allBar_Data = ArrayList<IBarDataSet>()
-        val barDataSet = VolumeBarDataSet(ta.data[Overlay.Kind.Volume_Bars]?.data as ArrayList<BarEntry>,"Volume")
+        val barDataSet = VolumeBarDataSet(ta.data[Overlay.Kind.Volume_Bars]?.data as ArrayList<BarEntry>, "Volume")
         val combinedData = CombinedData()
         barDataSet.setColors(
                 ContextCompat.getColor(context, R.color.md_red_500),
@@ -345,7 +404,7 @@ class ChartStyle(context: Context) {
             lineData.add(lineDataSet)
         }
     }
-    private fun AddOneLine(ticks: ArrayList<Entry>, lineStyle: LineStyle , lineData: ArrayList<ILineDataSet>){
+    private fun AddOneLine(ticks: ArrayList<Entry>, lineStyle: LineStyle, lineData: ArrayList<ILineDataSet>){
         try {
             val lineDataSet = LineDataSet(ticks, lineStyle.lineLabel)
 

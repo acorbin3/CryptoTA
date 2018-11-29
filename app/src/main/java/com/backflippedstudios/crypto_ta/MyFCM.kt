@@ -7,6 +7,7 @@ import android.media.RingtoneManager
 import android.support.v4.app.NotificationCompat
 import android.util.Log
 import android.content.Context
+import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -37,13 +38,13 @@ class MyFCM: FirebaseMessagingService() {
         println("packageInfo.versionName:${packageInfo.versionName}")
         if(openPlayStore!!){
             println("Open Play Store")
-            intent = Intent(this, MainActivity::class.java)
+            intent = Intent(this, DetailedAnalysisFrag::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
             intent.putExtra("openPlayStore",true)
         }
         else{
-            intent = Intent(this,MainActivity::class.java)
+            intent = Intent(this, DetailedAnalysisFrag::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
             intent.putExtra("Notification",body)
         }

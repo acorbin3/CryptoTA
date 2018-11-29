@@ -1,4 +1,4 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
 
 import android.graphics.Canvas
 import android.graphics.Path
