@@ -55,6 +55,9 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                 for (x in currentStartIndex + 1..currentEndIndex) {
 
                     currentEntry = dataSet.getEntryForIndex(x)
+                    if(boundaryEntry == null){
+                        break
+                    }
                     if(x >= boundaryEntry.size){
                         break
                     }

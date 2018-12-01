@@ -7,6 +7,9 @@ import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.data.CandleEntry
 import com.github.mikephil.charting.data.Entry
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.ta4j.core.BaseTimeSeries
 import org.ta4j.core.Tick
 import org.ta4j.core.TimeSeries
@@ -124,7 +127,7 @@ class TechnicalAnalysis {
     }
 
 
-    fun updateNonSelectedItems() {
+    fun updateNonSelectedItems() = runBlocking {
         var overlayList = ArrayList<Overlay.Kind>()
         for(overlay in OverlayAdapter.data.list){
             overlayList.add(overlay.kind)
@@ -142,16 +145,18 @@ class TechnicalAnalysis {
                 println("Skipping ${overlay.kind}")
                 continue
             }
-            try {
-                recalculateData(overlay.kind)
-            } catch (e: Exception) {
-                println("Crash ${e.localizedMessage} ${e.stackTrace}")
+            GlobalScope.launch {
+                try {
+                    recalculateData(overlay.kind)
+                } catch (e: Exception) {
+                    println("Crash ${e.localizedMessage} ${e.stackTrace}")
+                }
             }
         }
 
     }
 
-    fun updateTASmart() {
+    private fun updateTASmart() {
 
         for (overlay in OverlayAdapter.data.list) {
             if (!overlay.selected) {
@@ -282,7 +287,7 @@ class TechnicalAnalysis {
                                         this.getBarData(Volume_Bars))
                         } else {
                             if (this.getEntryData(overlay.value.kind).isNotEmpty())
-                                addXNumberOfEmptyEntries(ticksDataArray.indices.last,
+                                addXNumberOfEmptyEntries(this.getEntryData(overlay.value.kind).last().x.toInt(),
                                         OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt(),
                                         this.getEntryData(overlay.value.kind))
                         }

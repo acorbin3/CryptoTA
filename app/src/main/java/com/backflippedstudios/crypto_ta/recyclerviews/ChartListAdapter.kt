@@ -183,7 +183,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                     }
                 }
             }
-            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART, ChartStatusData.Status.LOADING_COMPLETE -> {
+            ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART -> {
                 if(list[position].status == ChartStatusData.Status.UPDATE_CHART) {
                     DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].recalculateData(list[position].kind)
                 }

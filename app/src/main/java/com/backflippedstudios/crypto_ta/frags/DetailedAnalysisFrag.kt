@@ -202,13 +202,7 @@ class DetailedAnalysisFrag : Fragment() {
 
         }
 
-        //Init Cloudinary
-//        var config = HashMap<String,String>()
-//        config.put("cloud_name", "dqevz3bfx");
-//        MediaManager.init(activity, config);
-
         mainView.swipe_to_refresh_market_cap.isRefreshing = true
-//        var resultFirestoreItemCount: Task<QuerySnapshot>? = null
         if (internetOn) {
             //set up spinner_time_period
             val timePeriods = ArrayList<String>(resources.getStringArray(R.array.time_periods).asList())
@@ -243,53 +237,9 @@ class DetailedAnalysisFrag : Fragment() {
                 override fun onNothingSelected(p0: AdapterView<*>?) = Unit
 
             }
-
-            //Update the coin's
-            if (data.chartList.size == 0 && internetOn && !data.isInitialLoadComplete) {//Have not been loaded before
-//                data.dataSource.initCoinsV2()
-
-                //result = data.dataSource.intCoins3()
-//                println("$$$$$$$\$Getting FirestoreCount")
-//                resultFirestoreItemCount = data.dataSource.getFirestoreItemCount(activity?.applicationContext!!)
-//                println("Firestore coutn $resultFirestoreItemCount")
-
-
-//                data.dataSource.initExchangesForCoin(data.coinSelected.toLowerCase())
-            }
         }
         if (!data.isInitialLoadComplete) {
-//            println("Wait for lock Detailed: ${DataSource.data.isCoinsPopulatedLOCK.tryLock()}")
-//            DataSource.data.isCoinsPopulatedLOCK.lock()
-//            DataSource.data.isCoinsPopulatedLOCK.unlock()
-//            processInit(internetOn)
-//            resultFirestoreItemCount?.addOnSuccessListener { it ->
-////                DataSource.data.isCoinsPopulatedLOCK.lock()
-////                println("Locking: ${DataSource.data.isCoinsPopulatedLOCK.tryLock()}")
-//                println("$$$$$$$\$Getting DAO count")
-//                var daoCount = data.dataSource.getDAOItemCount(activity?.applicationContext!!)
-//                it.forEach {
-//                    println("DAO count:$daoCount FirestoreCount: ${it.data["count"].toString()}")
-//                    if (it.data["count"].toString().toInt() == daoCount) {
-//                        data.dataSource.loadFromDAO(activity?.applicationContext!!)
-////                        DataSource.data.isCoinsPopulatedLOCK.unlock()
-//                        processInit(internetOn)
-//                    } else {
-//                        data.dataSource.clearDAO(activity?.applicationContext!!)
-//                        var result = data.dataSource.intCoins3(activity?.applicationContext!!)
-//                        result.addOnSuccessListener {
-////                            DataSource.data.isCoinsPopulatedLOCK.unlock()
-//                            processInit(internetOn)
-//                        }
-//                    }
-//                    return@addOnSuccessListener
-//                }
-//            }
         } else {
-//            for (overlay in OverlayAdapter.data.list) {
-//                if (!overlay.separateChart and overlay.selected) {
-//                    updateChartStatus(ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Type.MAIN_CHART, overlay.kind)
-//                }
-//            }
             processInit(internetOn)
         }
 
@@ -332,7 +282,7 @@ class DetailedAnalysisFrag : Fragment() {
             println(strListCoins1)
 
 
-            val coinAdapter = CoinSimpleArrowDropdownAdapter(activity?.applicationContext, R.layout.spinner_dropdown_main_view_with_arrow, strListCoins1)
+            val coinAdapter = CoinSimpleArrowDropdownAdapter(activity, R.layout.spinner_dropdown_main_view_with_arrow, strListCoins1)
             coinAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
 
             //Get index for selected coin
@@ -562,7 +512,7 @@ class DetailedAnalysisFrag : Fragment() {
             }
             //Init dropdown overlays
 
-            mainView.indicators_recycler_view.adapter = OverlayAdapter(activity?.applicationContext!!, list, allList)
+            mainView.indicators_recycler_view.adapter = OverlayAdapter(activity as Context, list, allList)
             mainView.indicators_recycler_view.layoutManager = LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false)
             mainView.indicators_recycler_view.setHasFixedSize(true)
             data.rvIndicatorsOverlays = mainView.indicators_recycler_view
@@ -594,7 +544,7 @@ class DetailedAnalysisFrag : Fragment() {
             }
         }
 
-        mainView.all_charts_recycler_view.adapter = ChartListAdapter(activity?.applicationContext!!, data.chartList)
+        mainView.all_charts_recycler_view.adapter = ChartListAdapter(activity as Context, data.chartList)
         mainView.all_charts_recycler_view.layoutManager = LinearLayoutManager(activity)
         (mainView.all_charts_recycler_view.adapter as ChartListAdapter).notifyDataSetChanged()
         //                all_charts_recycler_view.addItemDecoration(RecyclerViewMargin(activity))
@@ -1098,9 +1048,9 @@ class DetailedAnalysisFrag : Fragment() {
                         updateChartStatus(ChartStatusData.Status.INITIAL_LOAD, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                     }
                 }
-                if (all_charts_recycler_view.adapter != null)
+                if (mainView.all_charts_recycler_view.adapter != null)
                     activity?.runOnUiThread {
-                        all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+                        mainView.all_charts_recycler_view.adapter!!.notifyDataSetChanged()
                     }
                 activity?.runOnUiThread {
                     //Reset legends
