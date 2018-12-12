@@ -74,6 +74,7 @@ class DataSource {
         var coins: HashMap<String, Asset> = HashMap()
         var db = FirebaseFirestore.getInstance()
         var coinData: HashMap<String,ArrayList<Entry>> = HashMap()
+        var lockCoinData: Lock = ReentrantLock()
     }
 
     fun processOHLC(coin: String, url: String){
@@ -81,6 +82,7 @@ class DataSource {
 
         var coin_24h = coin+"_24h"
         var coin_7d = coin+"_7d"
+        data.lockCoinData.lock()
         if(coin_24h !in data.coinData){
             data.coinData[coin_24h] = ArrayList()
         }
@@ -94,6 +96,7 @@ class DataSource {
         for(i in 0 until ticks_7d.size){
             data.coinData[coin_7d]?.add(Entry(i.toFloat(),ticks_7d.get(i).closePrice.toDouble().toFloat()))
         }
+        data.lockCoinData.unlock()
     }
 
     fun getData(coin: String, exchange: String, currency: String, interval: Interval) : ArrayList<Tick> {
@@ -304,8 +307,12 @@ class DataSource {
         val apiInterface = APIClient.client.create(APIInterface::class.java)
 
         val call2 = apiInterface.doGetUserList("100")
+        try {
+            return call2.execute()
+        } catch (e: Exception){
 
-        return call2.execute()
+        }
+        return null
     }
 
     fun getMarketGraphSummary(symbol: String): Response<CryptoMarketList>? {

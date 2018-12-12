@@ -3,14 +3,19 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'io.fabric'
 apply plugin: 'kotlin-kapt'
+apply plugin: 'com.google.gms.google-services'
+if (!project.hasProperty("disable-performance-plugin")) {
+    apply plugin: 'com.google.firebase.firebase-perf'
+}
+//-Pdisable-performance-plugin
 android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.backflippedstudios.crypto_ta"
         minSdkVersion 19
         targetSdkVersion 28
-        versionCode 31
-        versionName "2.0.3"
+        versionCode 40
+        versionName "2.1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
     }
@@ -35,10 +40,11 @@ dependencies {
     implementation 'com.android.support:multidex:1.0.3'
     implementation 'com.android.support:recyclerview-v7:28.0.0'
 
-    implementation 'com.google.firebase:firebase-core:16.0.5'
-    implementation 'com.google.firebase:firebase-appindexing:16.0.2'
+    implementation 'com.google.firebase:firebase-core:16.0.6'
+    implementation 'com.google.firebase:firebase-appindexing:17.1.0'
     implementation 'com.google.firebase:firebase-messaging:17.3.4'
-    implementation 'com.google.firebase:firebase-firestore:17.1.3'
+    implementation 'com.google.firebase:firebase-firestore:17.1.4'
+    implementation 'com.google.firebase:firebase-perf:16.2.2'
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
@@ -48,7 +54,7 @@ dependencies {
 
     implementation 'com.github.skydoves:colorpickerpreference:1.0.5'
 
-    releaseImplementation 'com.crashlytics.sdk.android:crashlytics:2.9.6'
+    releaseImplementation 'com.crashlytics.sdk.android:crashlytics:2.9.7'
     implementation 'com.facebook.android:facebook-android-sdk:4.34.0'
     implementation "android.arch.persistence.room:runtime:1.1.1"
 //    implementation "org.rm3l:maoni-email:6.0.0"
@@ -68,4 +74,4 @@ dependencies {
     implementation 'com.squareup.picasso:picasso:2.71828'
 }
 
-apply plugin: 'com.google.gms.google-services'
+

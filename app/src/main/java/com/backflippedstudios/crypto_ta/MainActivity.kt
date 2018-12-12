@@ -38,19 +38,18 @@ class MainActivity : AppCompatActivity(){
         //Init viewPager
         val adapter = ViewPagerAdapter(supportFragmentManager)
 
-        if(DataSource.data.coins.isEmpty()) {
-            loadCoins()
-        }
 
         tab1Frag = DetailedAnalysisFrag()
+
         tab2Frag = MarketCapFrag()
-        val tab3Frag = MarketOverviewFrag()
+
+//        val tab3Frag = MarketOverviewFrag()
 
 
 
         adapter.addFragment(tab1Frag,tab1Frag.title)
         adapter.addFragment(tab2Frag,tab2Frag.title)
-        adapter.addFragment(tab3Frag,tab3Frag.title)
+//        adapter.addFragment(tab3Frag,tab3Frag.title)
         //To ensure that the first page stays in memory
         val viewPager: CustViewPager = this.viewpager as CustViewPager
         viewPager.offscreenPageLimit = 5
@@ -58,43 +57,50 @@ class MainActivity : AppCompatActivity(){
 
 
         tablayout.setupWithViewPager(viewPager)
+        if(DataSource.data.coins.isEmpty()) {
+            loadCoins()
+        }
 
 
     }
 
     private fun loadCoins() = runBlocking{
-        GlobalScope.launch {
+        launch {
             val resultFirestoreItemCount: Task<QuerySnapshot>?
 //            DetailedAnalysisFrag.data.mFirebaseAnalytics = FirebaseAnalytics.getInstance(applicationContext)
             println("$$$$$$$\$Getting FirestoreCount")
             resultFirestoreItemCount = data.dataSource.getFirestoreItemCount(context = applicationContext)
             resultFirestoreItemCount.addOnSuccessListener { it ->
 
-                println("$$$$$$$\$Getting DAO count")
-                val daoCount = data.dataSource.getDAOItemCount(applicationContext)
-                it.forEach {
-                    println("DAO count:$daoCount FirestoreCount: ${it.data["count"].toString()}")
-                    if (it.data["count"].toString().toInt() == daoCount) {
-                        data.dataSource.loadFromDAO(applicationContext)
-                        tab1Frag.processInit(true)
-                        tab2Frag.processGraphs()
-                        println("Finished initial loading ")
-                    } else {
-                        data.dataSource.clearDAO(applicationContext)
-                        val result = data.dataSource.intCoins3(applicationContext)
-                        result.addOnSuccessListener {
-                            tab1Frag.processInit(true)
+                    println("$$$$$$$\$Getting DAO count")
+                    val daoCount = data.dataSource.getDAOItemCount(applicationContext)
+                    it.forEach {
+                        println("DAO count:$daoCount FirestoreCount: ${it.data["count"].toString()}")
+                        if (it.data["count"].toString().toInt() == daoCount) {
+                            data.dataSource.loadFromDAO(applicationContext)
+                            if(tab1Frag.mainView != null) {
+                                tab1Frag.processInit(applicationContext, true)
+                            }
                             tab2Frag.processGraphs()
                             println("Finished initial loading ")
+                        } else {
+                            data.dataSource.clearDAO(applicationContext)
+                            val result = data.dataSource.intCoins3(applicationContext)
+                            result.addOnSuccessListener {
+                                if(tab1Frag.mainView != null) {
+                                    tab1Frag.processInit(applicationContext, true)
+                                }
+                                tab2Frag.processGraphs()
+                                println("Finished initial loading ")
+                            }
                         }
+
                     }
-                    return@addOnSuccessListener
+            }
+                resultFirestoreItemCount.addOnCompleteListener {  }
+                resultFirestoreItemCount.addOnFailureListener {
+                    println("Failed to get Count")
                 }
-            }
-            resultFirestoreItemCount.addOnCompleteListener {  }
-            resultFirestoreItemCount.addOnFailureListener {
-                println("Failed to get Count")
-            }
         }
     }
 }

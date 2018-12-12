@@ -141,10 +141,13 @@ class TechnicalAnalysis {
                 break
             }
             // Possible enhancement that the main kind
+            DetailedAnalysisFrag.data.taDataLock.lock()
             if (overlay.selected && DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getData(overlay.kind).size > 0) {
                 println("Skipping ${overlay.kind}")
+                DetailedAnalysisFrag.data.taDataLock.unlock()
                 continue
             }
+            DetailedAnalysisFrag.data.taDataLock.unlock()
             GlobalScope.launch {
                 try {
                     recalculateData(overlay.kind)

@@ -479,7 +479,9 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                         }
                         //Data not available and background items still loading, notify user
                         if (!finished) {
-                            var indicatorData = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getData(kind)
+                            DetailedAnalysisFrag.data.taDataLock.lock()
+                            val indicatorData = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getData(kind)
+                            DetailedAnalysisFrag.data.taDataLock.unlock()
                             var count = 0
                             if(indicatorData.isNotEmpty()){
                                 count = indicatorData[0].size

@@ -13,10 +13,17 @@ import com.backflippedstudios.crypto_ta.customchartmods.ChartStyle
 import com.backflippedstudios.crypto_ta.data.DataSource
 import com.backflippedstudios.crypto_ta.data.retrofit.Datum
 import com.github.mikephil.charting.charts.CombinedChart
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.squareup.picasso.Picasso
 import java.text.NumberFormat
+import java.util.ArrayList
 
 class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): RecyclerView.Adapter<MarketCapCardsAdapter.CardsViewHolder>(){
+
+    object data{
+        var coinLineData: HashMap<String, ArrayList<ILineDataSet>> = HashMap()
+    }
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): CardsViewHolder {
         val view = LayoutInflater.from(p0.context).inflate(R.layout.market_cap_item,p0, false)
         return CardsViewHolder(view)
@@ -48,7 +55,7 @@ class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): 
                 .placeholder(android.R.drawable.ic_menu_help)
                 .error(android.R.drawable.ic_menu_help)
                 .resize(100,100)
-                .into(p0.iv_coin_icon);
+                .into(p0.iv_coin_icon)
 
         //Update chart with data
         p0.chart_24.clear()
@@ -61,8 +68,12 @@ class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): 
         val coin7d = symbol +"_7d"
         var percentChange24h = 0.0
         var percentChange7d = 0.0
+        DataSource.data.lockCoinData.lock()
         if(coin24h in DataSource.data.coinData) {
-            if (DataSource.data.coinData[coin24h]?.size!! > 0) {
+            if(coin24h in data.coinLineData){
+                ChartStyle(context).updateMarketCapGraph(data.coinLineData[coin24h]!!,p0.chart_24)
+            }
+            else if (DataSource.data.coinData[coin24h]?.size!! > 0) {
                 ChartStyle(context).updateMarketCapGraph(DataSource.data.coinData[coin24h]!!,p0.chart_24)
             }
             // Update 24h % Change
@@ -74,15 +85,20 @@ class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): 
         }
 
         if(coin7d in DataSource.data.coinData) {
-            if (DataSource.data.coinData[coin7d]?.size!! > 0) {
-                ChartStyle(context).updateMarketCapGraph(DataSource.data.coinData[coin7d]!!,p0.chart_7d)
-                percentChange7d = DataSource.data.coinData[coin7d]?.first()?.y?.let {
-                    DataSource.data.coinData[coin7d]?.last()?.y?.minus(it) }?.toFloat()?.toDouble()!!/ DataSource.data.coinData[coin7d]?.first()?.y!!
+            if(coin7d in data.coinLineData){
+                ChartStyle(context).updateMarketCapGraph(data.coinLineData[coin7d]!!,p0.chart_7d)
             }
+            else if (DataSource.data.coinData[coin7d]?.size!! > 0) {
+                data.coinLineData[coin7d] = ChartStyle(context).updateMarketCapGraph(DataSource.data.coinData[coin7d]!!,p0.chart_7d)
+            }
+            //Update 7d % Change
+            percentChange7d = DataSource.data.coinData[coin7d]?.first()?.y?.let {
+                DataSource.data.coinData[coin7d]?.last()?.y?.minus(it) }?.toFloat()?.toDouble()!!/ DataSource.data.coinData[coin7d]?.first()?.y!!
         }
         else{
             p0.chart_7d.setNoDataText("Loading data")
         }
+        DataSource.data.lockCoinData.unlock()
         p0.chart_24.invalidate()
         p0.chart_7d.invalidate()
 

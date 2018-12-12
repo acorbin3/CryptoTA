@@ -147,9 +147,11 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                 combinedViewHolder.chart.setNoDataText("Not connected to the internet")
             }
             ChartStatusData.Status.UPDATE_CANDLESTICKS -> {
+                DetailedAnalysisFrag.data.taDataLock.lock()
                 ChartStyle(context).updateCandlestickGraph(
                         DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                         combinedViewHolder.chart)
+                DetailedAnalysisFrag.data.taDataLock.unlock()
                 //Next line syncs the inital zoom on all charts
                 DetailedAnalysisFrag.data.matrixLocation = combinedViewHolder.chart.viewPortHandler.matrixTouch
             }
@@ -157,10 +159,12 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                 println("Updating Overlays from ChartList Adapter")
                 combinedViewHolder.chart.fillInbetweenLines = true
 //                DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].recalculateData(list[position].kind)
+                DetailedAnalysisFrag.data.taDataLock.lock()
                 ChartStyle(context).updateOverlays(
                         OverlayAdapter.data.list,
                         DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                         combinedViewHolder.chart)
+                DetailedAnalysisFrag.data.taDataLock.unlock()
                 list[position].status = ChartStatusData.Status.LOADING_COMPLETE
 
                 //Check to see if Piviot points are on, if so then we need to create a custom legend on main graph
@@ -171,11 +175,13 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                 when (list[position].kind) {
 
                     Overlay.Kind.Volume_Bars -> {
+                        DetailedAnalysisFrag.data.taDataLock.lock()
                         ChartStyle(context).updateVolumeGraph(
                                 DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                                 combinedViewHolder.chart,
                                 true
                         )
+                        DetailedAnalysisFrag.data.taDataLock.unlock()
                     }
                     else -> {
                         combinedViewHolder.chart.clear()
@@ -185,15 +191,19 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
             }
             ChartStatusData.Status.UPDATE_CHART, ChartStatusData.Status.TOGGLE_CHART -> {
                 if(list[position].status == ChartStatusData.Status.UPDATE_CHART) {
+                    DetailedAnalysisFrag.data.taDataLock.lock()
                     DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].recalculateData(list[position].kind)
+                    DetailedAnalysisFrag.data.taDataLock.unlock()
                 }
                 when (list[position].kind) {
                     Overlay.Kind.Volume_Bars -> {
+                        DetailedAnalysisFrag.data.taDataLock.lock()
                         ChartStyle(context).updateVolumeGraph(
                                 DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period],
                                 combinedViewHolder.chart,
                                 true
                         )
+                        DetailedAnalysisFrag.data.taDataLock.unlock()
                     }
                     Overlay.Kind.None ->{
                         //Check to see if Piviot points are on, if so then we need to create a custom legend on main graph
@@ -259,11 +269,13 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                             combinedViewHolder.chart.axisRight.addLimitLine(lineLimit2)
                         }
 
+                        DetailedAnalysisFrag.data.taDataLock.lock()
                         ChartStyle(context).updateLineGraph(
                                 allLineGraphStyle,
                                 combinedViewHolder.chart
                         )
                         combinedViewHolder.chart.notifyDataSetChanged()
+                        DetailedAnalysisFrag.data.taDataLock.unlock()
 
                     }
                 }
@@ -450,6 +462,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
     private fun getSelectedValueText(item: Overlay, e: Entry, updatedText: String, legendList: MutableList<LegendEntry>): String {
         var updatedText1 = updatedText
         if (item.kindData.hasData) {
+            DetailedAnalysisFrag.data.taDataLock.lock()
             if (DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getEntryData(item.kind).size > e.x.toInt()) {
 
                 var index = e.x.toInt()
@@ -476,6 +489,7 @@ class ChartListAdapter(var context: Context, var list: ArrayList<ChartStatusData
                     }
                 }
             }
+            DetailedAnalysisFrag.data.taDataLock.unlock()
         }
         return updatedText1
     }

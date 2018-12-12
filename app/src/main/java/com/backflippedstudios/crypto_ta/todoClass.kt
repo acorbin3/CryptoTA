@@ -5,7 +5,14 @@ package com.backflippedstudios.crypto_ta
  */
 class todoClass {
 
+    //DONE - Does Market Overview help at all? - REMOVED
+    // DONE 12/11/2018 - make loading smoother?
+    // TODO - load and refresh after each indicator has finished
+    //  TODO -Enhancement- on click of a card, move the detailed view and load the Tech Analaysis?
+    // DONE 12/5/2018 - More crash fixes, removing Market overview, and updated Market cap graphs to be filled
 
+    //DONE 12/4/2018 - Tried to fix some more bugs with context issue possibly
+    //
     // Release 1.4.2
     //DONE 11/13/2018 - feedback button
     //DONE 11/13/2018 - Attempted to fix stack overflow on TechAnalysis for DoubleEMA
@@ -17,7 +24,7 @@ class todoClass {
     //DONE 11/23/2018- Bug - Crash on screen rotate
     //Done 11/28/2018 - get rotating working
     // Done 11/29/2018- fix bugs from crashlitics
-    //TODO-4: add tabs
+    //DONE-4: add tabs
     //          DONE: Tab for cards comparing daily changes kinda like main cryptowat.ch
         //DONE 11/15/2018 Correctly parse the Market data
         //DONE 11/16/2018 - Created data struct for market data, Create new tab layout, Recycleview with cards
@@ -33,7 +40,7 @@ class todoClass {
     //  DONE 11/25/2018 1. Use cryptowatch data OHLC and only use the Close values
     //  2. Use binance as the main exchange.
     //  3. BTC to USD as reference to convert other coins to USD
-    //  TODO -Enhancement- on click of a card, move the detailed view and load the Tech Analaysis?
+
     //          https://api.cryptowat.ch/markets/EXCHANGE/COIN_PAIR/summary
     // Tab 1 is deep dive analysis
     // Tab 2 is custom cards( user pick what they want to show) kinda like favorates

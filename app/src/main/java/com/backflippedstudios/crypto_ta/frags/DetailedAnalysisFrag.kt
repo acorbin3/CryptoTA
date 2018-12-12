@@ -86,12 +86,13 @@ class DetailedAnalysisFrag : Fragment() {
     val MY_PERMISSIONS_REQUEST_READ_FILE = 0
     private val regressionTesting = false
 
-    lateinit var mainView: View
+    var mainView: View? = null
     val title = "Detail Analsis"
 
 
     object data {
-        val all_ta = Array<TechnicalAnalysis>(DataSource.Interval.values().size, { TechnicalAnalysis(ArrayList<Tick>()) })
+        val all_ta = Array<TechnicalAnalysis>(DataSource.Interval.values().size) { TechnicalAnalysis(ArrayList<Tick>()) }
+        var taDataLock: Lock = ReentrantLock()
         var mChart: CombinedChart? = null
         var saved_time_period: Int = 0
         var coinSelected: String = "ETH"
@@ -140,6 +141,7 @@ class DetailedAnalysisFrag : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         //return super.onCreateView(inflater, container, savedInstanceState)
+        mainView = inflater.inflate(R.layout.detail_analysis_main_layout, container, false)
         data.endTA = true
 
         data.lastOrientation = resources.configuration.orientation
@@ -160,12 +162,14 @@ class DetailedAnalysisFrag : Fragment() {
         println("Loading from scratch")
         data.displayWidth = activity?.windowManager?.defaultDisplay?.width!! * 2
         data.loading = true
+//        if(BuildConfig.DEBUG) {
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
+//        }
         activity?.window?.decorView?.systemUiVisibility = data.systemUIVisibilityPermissions
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-        mainView = inflater.inflate(R.layout.detail_analysis_main_layout, container, false)
-        layout = mainView.findViewById(R.id.main_frame_layout)
+
+        layout = mainView!!.findViewById(R.id.main_frame_layout)
         //Get last selected pre-sets
         data.prefs = activity?.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
         data.saved_time_period = data.prefs!!.getInt(TIME_PERIOD, 0)
@@ -174,20 +178,20 @@ class DetailedAnalysisFrag : Fragment() {
         data.exchangeSelected = data.prefs!!.getString(EXCHANGE_SELETED, "Gdax")
 
         data.uuid = data.prefs!!.getString(USER_UUID, UUID.randomUUID().toString())
-        mainView.b_drawer.setImageResource(R.drawable.menu_red)
-        mainView.b_collapse_arrow.alpha = 0F
-        data.ivDrawer = mainView.b_drawer
-        data.ivCollapseArrow = mainView.b_collapse_arrow
+        mainView?.b_drawer?.setImageResource(R.drawable.menu_red)
+        mainView?.b_collapse_arrow?.alpha = 0F
+        data.ivDrawer = mainView?.b_drawer!!
+        data.ivCollapseArrow = mainView?.b_collapse_arrow!!
 
         val internetOn = isInternetOn()
         if (internetOn) {
-            mainView.iv_share_screenshot.setOnClickListener {
+            mainView?.iv_share_screenshot?.setOnClickListener {
 
                 requestWritePermission()
 
             }
         }
-        mainView.iv_feedback.setOnClickListener {
+        mainView?.iv_feedback?.setOnClickListener {
             val bundle = Bundle()
             bundle.putString("uuid", data.uuid)
             data.mFirebaseAnalytics.logEvent("FeebackSelected", bundle)
@@ -202,15 +206,15 @@ class DetailedAnalysisFrag : Fragment() {
 
         }
 
-        mainView.swipe_to_refresh_market_cap.isRefreshing = true
+        mainView?.swipe_to_refresh_market_cap?.isRefreshing = true
         if (internetOn) {
             //set up spinner_time_period
             val timePeriods = ArrayList<String>(resources.getStringArray(R.array.time_periods).asList())
-            val spinnerAdapter = SimpleArrowDropdownAdapter(activity, R.layout.spinner_dropdown_main_view_with_arrow, timePeriods)
+            val spinnerAdapter = SimpleArrowDropdownAdapter(activity?.applicationContext , R.layout.spinner_dropdown_main_view_with_arrow, timePeriods)
             spinnerAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
-            mainView.spinner_time_period.adapter = spinnerAdapter
-            mainView.spinner_time_period.setSelection(data.saved_time_period)
-            mainView.spinner_time_period.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            mainView?.spinner_time_period?.adapter = spinnerAdapter
+            mainView?.spinner_time_period?.setSelection(data.saved_time_period)
+            mainView?.spinner_time_period?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
                     if (spinnerTimeFirstRun) {
                         spinnerTimeFirstRun = false
@@ -238,22 +242,24 @@ class DetailedAnalysisFrag : Fragment() {
 
             }
         }
-        if (!data.isInitialLoadComplete) {
-        } else {
-            processInit(internetOn)
+        if (data.isInitialLoadComplete) {
+            processInit(activity!!, internetOn)
+        }
+        else if(DataSource.data.coins.isNotEmpty()){
+            processInit(activity!!, internetOn)
         }
 
         return mainView
     }
 
-    fun processInit(internetOn: Boolean) = runBlocking{
-        var strListCoins: ArrayList<String> = ArrayList()
+    fun processInit(context: Context,internetOn: Boolean) = runBlocking{
+        val strListCoins: ArrayList<String> = ArrayList()
         //Dropdown for coins
         var strListCoins1 = strListCoins
         if (internetOn) {
 
             val validCoins: Map<String, DataSource.Asset> = DataSource.data.coins.filter { !it.value.FiatLegalTender }
-            var coinPairs: HashSet<String> = HashSet()
+            val coinPairs: HashSet<String> = HashSet()
             for (coin in validCoins.toSortedMap().iterator()) {
                 //if the symbol and name are the same, just print symbol
                 //                        println("Coin: ${coin.value.name}")
@@ -282,7 +288,7 @@ class DetailedAnalysisFrag : Fragment() {
             println(strListCoins1)
 
 
-            val coinAdapter = CoinSimpleArrowDropdownAdapter(activity, R.layout.spinner_dropdown_main_view_with_arrow, strListCoins1)
+            val coinAdapter = CoinSimpleArrowDropdownAdapter(context, R.layout.spinner_dropdown_main_view_with_arrow, strListCoins1)
             coinAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
 
             //Get index for selected coin
@@ -299,9 +305,9 @@ class DetailedAnalysisFrag : Fragment() {
                     }
                     ?.let { strListCoins1.indexOf(it) }
                     ?: 0
-            mainView.spinner_coin_type.adapter = coinAdapter
-            mainView.spinner_coin_type.setSelection(coinIndex)
-            mainView.spinner_coin_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            mainView?.spinner_coin_type?.adapter = coinAdapter
+            mainView?.spinner_coin_type?.setSelection(coinIndex)
+            mainView?.spinner_coin_type?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
                     if (spinnerCoinFirstRun) {
                         spinnerCoinFirstRun = false
@@ -342,7 +348,7 @@ class DetailedAnalysisFrag : Fragment() {
                         data.coinSelected = selectedCoin
                         data.currencySelected = selectedCurrency
                         //                        data.dataSource.initExchangesForCoin(data.coinSelected.toLowerCase())
-                        updateExchangeDueToCoinUpdate()
+                        updateExchangeDueToCoinUpdate(context)
                         //                        updateCurrencyList()
                         //                println("update graph from coin change")
                         //Update the chart with the latest data from the web
@@ -364,8 +370,8 @@ class DetailedAnalysisFrag : Fragment() {
         }
         //Dropdown for exchanges
         if (internetOn) {
-            updateExchangeDueToCoinUpdate()
-            mainView.spinner_exchange_type.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            updateExchangeDueToCoinUpdate(context)
+            mainView?.spinner_exchange_type?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
                     if (spinnerExchangeFirstRun) {
                         spinnerExchangeFirstRun = false
@@ -413,7 +419,7 @@ class DetailedAnalysisFrag : Fragment() {
         if (internetOn) {
 
             //Initial value of live price
-            mainView.tv_live_price.text = MainActivity.data.dataSource.getCurrentValue(
+            mainView?.tv_live_price?.text = MainActivity.data.dataSource.getCurrentValue(
                     data.coinSelected,
                     data.exchangeSelected,
                     data.currencySelected).toString()
@@ -421,12 +427,12 @@ class DetailedAnalysisFrag : Fragment() {
             if (data.coinSelected.toLowerCase() != "btc")
                 MainActivity.data.dataSource.initExchangesForCoin("btc")
             if (!data.currencySelected.toLowerCase().contains("usd")) {
-                mainView.tv_usd_value.text = "$" + MainActivity.data.dataSource.getUSDValue(
+                mainView?.tv_usd_value?.text = "$" + MainActivity.data.dataSource.getUSDValue(
                         data.coinSelected,
                         data.exchangeSelected).toString()
             } else {
                 //Case for when we are already looking at BTC to USD, no need to do conversion
-                mainView.tv_usd_value.text = "$" + MainActivity.data.dataSource.getCurrentValue(
+                mainView?.tv_usd_value?.text = "$" + MainActivity.data.dataSource.getCurrentValue(
                         data.coinSelected,
                         data.exchangeSelected,
                         data.currencySelected).toString()
@@ -459,8 +465,8 @@ class DetailedAnalysisFrag : Fragment() {
 
                         activity?.runOnUiThread {
                             try {
-                                mainView.tv_live_price.setTextColor(color)
-                                mainView.tv_usd_value.setTextColor(color)
+                                mainView?.tv_live_price?.setTextColor(color)
+                                mainView?.tv_usd_value?.setTextColor(color)
 
                                 var coinPair = data.coinSelected + "/" + data.currencySelected + " "
 
@@ -469,7 +475,7 @@ class DetailedAnalysisFrag : Fragment() {
                                 diff.replace(",", ".")
                                 diff = "%.6f".format(diff.toFloat())
                                 //                                    println("$diff $oldPrice $newPrice")
-                                mainView.tv_live_price.text = coinPair + newPrice.toString() +
+                                mainView?.tv_live_price?.text = coinPair + newPrice.toString() +
                                         "(" + (diff) + ")"
 
                                 if (newUSDPrice > 1) {
@@ -485,7 +491,7 @@ class DetailedAnalysisFrag : Fragment() {
                                             "(" + diff + ")"
                                 } else {
                                     //Case for when we are already looking at BTC to USD, no need to do conversion
-                                    mainView.tv_usd_value.text = mainView.tv_live_price.text
+                                    mainView?.tv_usd_value?.text = mainView?.tv_live_price?.text
                                 }
 
                                 data.currentCoinRatio = newPrice
@@ -512,10 +518,10 @@ class DetailedAnalysisFrag : Fragment() {
             }
             //Init dropdown overlays
 
-            mainView.indicators_recycler_view.adapter = OverlayAdapter(activity as Context, list, allList)
-            mainView.indicators_recycler_view.layoutManager = LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false)
-            mainView.indicators_recycler_view.setHasFixedSize(true)
-            data.rvIndicatorsOverlays = mainView.indicators_recycler_view
+            mainView?.indicators_recycler_view?.adapter = OverlayAdapter(activity as Context, list, allList)
+            mainView?.indicators_recycler_view?.layoutManager = LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false)
+            mainView?.indicators_recycler_view?.setHasFixedSize(true)
+            data.rvIndicatorsOverlays = mainView?.indicators_recycler_view!!
             data.rvIndicatorsOverlays.addItemDecoration(DividerItemDecoration(activity, LinearLayoutManager.VERTICAL))
 
             //Set the initial style for the chart
@@ -544,21 +550,21 @@ class DetailedAnalysisFrag : Fragment() {
             }
         }
 
-        mainView.all_charts_recycler_view.adapter = ChartListAdapter(activity as Context, data.chartList)
-        mainView.all_charts_recycler_view.layoutManager = LinearLayoutManager(activity)
-        (mainView.all_charts_recycler_view.adapter as ChartListAdapter).notifyDataSetChanged()
+        mainView?.all_charts_recycler_view?.adapter = ChartListAdapter(activity as Context, data.chartList)
+        mainView?.all_charts_recycler_view?.layoutManager = LinearLayoutManager(activity)
+        (mainView?.all_charts_recycler_view?.adapter as ChartListAdapter).notifyDataSetChanged()
         //                all_charts_recycler_view.addItemDecoration(RecyclerViewMargin(activity))
-        mainView.all_charts_recycler_view.setOnClickListener {
+        mainView?.all_charts_recycler_view?.setOnClickListener {
             if (indicators_recycler_view.visibility == View.VISIBLE) {
                 hideIndicatorsList()
             }
         }
 
-        data.rvCharts = mainView.all_charts_recycler_view
+        data.rvCharts = mainView?.all_charts_recycler_view!!
 
         //On swipe down, refresh overlays
         if (internetOn) {
-            mainView.swipe_to_refresh_market_cap.setOnRefreshListener {
+            mainView?.swipe_to_refresh_market_cap?.setOnRefreshListener {
                 println("Updating Graph")
                 if (!data.loading) {
                     data.endTA = true
@@ -569,8 +575,8 @@ class DetailedAnalysisFrag : Fragment() {
             }
         }
 
-        mainView.b_drawer.setOnClickListener {
-            if (mainView.indicators_recycler_view.visibility == View.VISIBLE) {
+        mainView?.b_drawer?.setOnClickListener {
+            if (mainView?.indicators_recycler_view?.visibility == View.VISIBLE) {
                 hideIndicatorsList()
             } else {
                 displayIndicatorList()
@@ -578,11 +584,11 @@ class DetailedAnalysisFrag : Fragment() {
 
         }
 
-        mainView.b_drawer.isClickable = false
+        mainView?.b_drawer?.isClickable = false
 
         //Updating overlays
         if (internetOn) {
-            mainView.swipe_to_refresh_market_cap.isRefreshing = true
+            mainView?.swipe_to_refresh_market_cap?.isRefreshing = true
 
             data.rvIndicatorsOverlays.setBackgroundColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_grey_700))
             data.rvIndicatorsOverlays.alpha = 0F
@@ -632,9 +638,9 @@ class DetailedAnalysisFrag : Fragment() {
                             ?.let { strListCoins1.indexOf(it) }
                             ?: 0
                     activity?.runOnUiThread {
-                        mainView.spinner_coin_type.setSelection(coinIndex)
+                        mainView?.spinner_coin_type?.setSelection(coinIndex)
                     }
-                    updateExchangeDueToCoinUpdate(false)
+                    updateExchangeDueToCoinUpdate(context,false)
                     executeGraphUpdate(data.saved_time_period, selectedCoin, data.exchangeSelected, selectedCurrency, true, true)
 
                     var loadingComplete = false
@@ -839,14 +845,14 @@ class DetailedAnalysisFrag : Fragment() {
                     data.coinSelected,
                     data.exchangeSelected)
 
-            mainView.tv_live_price.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
-            mainView.tv_usd_value.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
+            mainView?.tv_live_price?.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
+            mainView?.tv_usd_value?.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
 
-            mainView.tv_live_price.text = newPrice.toString()
+            mainView?.tv_live_price?.text = newPrice.toString()
             if (newUSDPrice > 1) {
                 newUSDPrice = "%.2f".format(newUSDPrice).toFloat()
             }
-            mainView.tv_usd_value.text = "$" + newUSDPrice.toString()
+            mainView?.tv_usd_value?.text = "$" + newUSDPrice.toString()
         } catch (e: Exception) {
 
         }
@@ -854,14 +860,14 @@ class DetailedAnalysisFrag : Fragment() {
 
     private fun displayIndicatorList() {
 
-        mainView.b_drawer.animate()
-                .rotation(90F)
-                .alpha(0F)
-                .duration = 200
-        mainView.b_collapse_arrow.animate()
-                .rotation(540F)
-                .alpha(1F)
-                .duration = 200
+        mainView?.b_drawer?.animate()
+                ?.rotation(90F)
+                ?.alpha(0F)
+                ?.duration = 200
+        mainView?.b_collapse_arrow?.animate()
+                ?.rotation(540F)
+                ?.alpha(1F)
+                ?.duration = 200
 
 
         data.rvIndicatorsOverlays.visibility = View.VISIBLE
@@ -882,14 +888,17 @@ class DetailedAnalysisFrag : Fragment() {
 
     private fun hideIndicatorsList() {
 
-        mainView.b_drawer.animate()
-                .rotation(0F)
-                .alpha(1F)
-                .duration = 200
-        mainView.b_collapse_arrow.animate()
-                .rotation(0F)
-                .alpha(0F)
-                .duration = 200
+        mainView?.let {
+            mainView?.b_drawer?.animate()
+                    ?.rotation(0F)
+                    ?.alpha(1F)
+                    ?.duration = 200
+            mainView?.b_collapse_arrow?.animate()
+                    ?.rotation(0F)
+                    ?.alpha(0F)
+                    ?.duration = 200
+        }
+
 
 
         data.displayWidth = activity?.windowManager?.defaultDisplay?.width!! * 2
@@ -914,16 +923,19 @@ class DetailedAnalysisFrag : Fragment() {
         if (runningTA) {
             println("TA Running, making title Loading")
             hideIndicatorsList()
-            mainView.b_drawer.setImageResource(R.drawable.menu_yellow)
-            mainView.b_drawer.isClickable = false
+            mainView?.let {
+                mainView?.b_drawer?.setImageResource(R.drawable.menu_yellow)
+                mainView?.b_drawer?.isClickable = false
+            }
+
         } else {
             println("TA not running, making  title Indicators")
-            mainView.b_drawer.setImageResource(R.drawable.menu_white)
-            mainView.b_drawer.isClickable = true
+            mainView?.b_drawer?.setImageResource(R.drawable.menu_white)
+            mainView?.b_drawer?.isClickable = true
         }
     }
 
-    private fun updateExchangeDueToCoinUpdate(updatePrefs: Boolean = true) {
+    private fun updateExchangeDueToCoinUpdate(context: Context, updatePrefs: Boolean = true) {
         val exchanges: List<DataSource.Exchange> = DataSource.data.coins[data.coinSelected.toLowerCase()].let {
             it?.exchanges?.filter { it.paring.contains(data.currencySelected.toLowerCase()) }
         } ?: return
@@ -936,22 +948,22 @@ class DetailedAnalysisFrag : Fragment() {
         val strSetExchanges: HashSet<String> = HashSet(strListExchanges)
         strListExchanges = ArrayList(strSetExchanges)
         strListExchanges.sort()
-        val exchangeAdapter = SimpleArrowDropdownAdapter(activity, R.layout.spinner_dropdown_main_view_with_arrow, strListExchanges)
+        val exchangeAdapter = SimpleArrowDropdownAdapter(context, R.layout.spinner_dropdown_main_view_with_arrow, strListExchanges)
         exchangeAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
 
         activity?.runOnUiThread {
-            mainView.spinner_exchange_type.adapter = exchangeAdapter
+            mainView?.spinner_exchange_type?.adapter = exchangeAdapter
         }
         //reset first selection on Exchange spinner so we dont update the graph 2 times
         spinnerExchangeFirstRun = true
         //Check if previous exchange is still in the list, if not select the first one
         if (strListExchanges.contains(data.exchangeSelected)) {
             activity?.runOnUiThread {
-                mainView.spinner_exchange_type.setSelection(strListExchanges.indexOf(data.exchangeSelected))
+                mainView?.spinner_exchange_type?.setSelection(strListExchanges.indexOf(data.exchangeSelected))
             }
         } else {
             activity?.runOnUiThread {
-                mainView.spinner_exchange_type.setSelection(0)
+                mainView?.spinner_exchange_type?.setSelection(0)
             }
             if (updatePrefs) {
                 val editor = data.prefs!!.edit()
@@ -979,14 +991,14 @@ class DetailedAnalysisFrag : Fragment() {
             runTA: Boolean = true
     ) = runBlocking{
         activity?.runOnUiThread {
-            mainView.swipe_to_refresh_market_cap.isRefreshing = true
+            mainView?.swipe_to_refresh_market_cap?.isRefreshing = true
             updateCurrentPrices()
         }
         println("Task running")
         activity?.runOnUiThread {
-            mainView.spinner_coin_type.isEnabled = false
-            mainView.spinner_exchange_type.isEnabled = false
-            mainView.spinner_time_period.isEnabled = false
+            mainView?.spinner_coin_type?.isEnabled = false
+            mainView?.spinner_exchange_type?.isEnabled = false
+            mainView?.spinner_time_period?.isEnabled = false
         }
         if (data.all_ta[position].getCandlestickData(Overlay.Kind.CandleStick).size == 0 || forceUpdate) {
             updateChartStatus(ChartStatusData.Status.LOADING, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None)
@@ -997,8 +1009,8 @@ class DetailedAnalysisFrag : Fragment() {
                 }
             }
             activity?.runOnUiThread {
-                if (mainView.all_charts_recycler_view.adapter != null)
-                    mainView.all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+                if (mainView?.all_charts_recycler_view?.adapter != null)
+                    mainView?.all_charts_recycler_view?.adapter!!.notifyDataSetChanged()
 
                 //Reset legends
                 for ((key, chart) in ChartListAdapter.data.charts) {
@@ -1021,25 +1033,26 @@ class DetailedAnalysisFrag : Fragment() {
                             updateChartStatus(ChartStatusData.Status.UPDATE_FAILED, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                         }
                     }
-                    if (mainView.all_charts_recycler_view.adapter != null)
-                        mainView.all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+                    if (mainView?.all_charts_recycler_view?.adapter != null)
+                        mainView?.all_charts_recycler_view?.adapter!!.notifyDataSetChanged()
 
-                    mainView.b_drawer.setImageResource(R.drawable.menu_red)
-                    mainView.b_drawer.isClickable = false
+                    mainView?.b_drawer?.setImageResource(R.drawable.menu_red)
+                    mainView?.b_drawer?.isClickable = false
 
-                    mainView.swipe_to_refresh_market_cap.isRefreshing = false
-                    mainView.spinner_coin_type.isEnabled = true
-                    mainView.spinner_exchange_type.isEnabled = true
-                    mainView.spinner_time_period.isEnabled = true
+                    mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
+                    mainView?.spinner_coin_type?.isEnabled = true
+                    mainView?.spinner_exchange_type?.isEnabled = true
+                    mainView?.spinner_time_period?.isEnabled = true
                 }
 
 
                 return@runBlocking
             } else {
                 println("Doing TA $position")
-
+                DetailedAnalysisFrag.data.taDataLock.lock()
                 data.all_ta[position].clearAll()
                 data.all_ta[position].updateCandlestickData(ticks, addTimeSeriesData = true)
+                DetailedAnalysisFrag.data.taDataLock.unlock()
 
 
                 updateChartStatus(ChartStatusData.Status.UPDATE_CANDLESTICKS, ChartStatusData.Type.MAIN_CHART, Overlay.Kind.None)
@@ -1048,9 +1061,9 @@ class DetailedAnalysisFrag : Fragment() {
                         updateChartStatus(ChartStatusData.Status.INITIAL_LOAD, ChartStatusData.Type.SEPARATE_CHART, overlay.kind)
                     }
                 }
-                if (mainView.all_charts_recycler_view.adapter != null)
+                if (mainView?.all_charts_recycler_view?.adapter != null)
                     activity?.runOnUiThread {
-                        mainView.all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+                        mainView?.all_charts_recycler_view?.adapter!!.notifyDataSetChanged()
                     }
                 activity?.runOnUiThread {
                     //Reset legends
@@ -1104,13 +1117,13 @@ class DetailedAnalysisFrag : Fragment() {
         }
 
         activity?.runOnUiThread {
-            if (mainView.all_charts_recycler_view.adapter != null)
-                mainView.all_charts_recycler_view.adapter!!.notifyDataSetChanged()
+            if (mainView?.all_charts_recycler_view?.adapter != null)
+                mainView?.all_charts_recycler_view?.adapter!!.notifyDataSetChanged()
 
-            mainView.spinner_coin_type.isEnabled = true
-            mainView.spinner_exchange_type.isEnabled = true
-            mainView.spinner_time_period.isEnabled = true
-            mainView.swipe_to_refresh_market_cap.isRefreshing = false
+            mainView?.spinner_coin_type?.isEnabled = true
+            mainView?.spinner_exchange_type?.isEnabled = true
+            mainView?.spinner_time_period?.isEnabled = true
+            mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
         }
 
     }

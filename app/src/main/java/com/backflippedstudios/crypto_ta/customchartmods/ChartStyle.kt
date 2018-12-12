@@ -61,6 +61,8 @@ class ChartStyle(context: Context) {
         it.setViewPortOffsets(0F, 0F, 0F, 0F)
         it.invalidate()
         it.moveViewToX(it.data.xMax)
+        it.isClickable = false
+        it.isDragEnabled = false
     }
     private fun chartDefaults(it: CombinedChart, drawXAxis: Boolean = true) {
         it.legend.setDrawInside(true)
@@ -98,38 +100,80 @@ class ChartStyle(context: Context) {
         it.axisRight.setPosition(YAxis.YAxisLabelPosition.INSIDE_CHART)
         it.axisRight.yOffset =7F
     }
-
-    fun updateMarketCapGraph(entryList: ArrayList<Entry>, mChart: CombinedChart?){
+    // Cache the calculation of the data
+    fun updateMarketCapGraph(entryList: ArrayList<Entry>, mChart: CombinedChart?): ArrayList<ILineDataSet>{
         val combinedData = CombinedData()
         val allLine_Data = ArrayList<ILineDataSet>()
         val threshold = entryList.first()
         var lastItem  = entryList.first()
         var segment  = ArrayList<Entry>()
         //Make multiple sections based on the first close. Above is green, below is red
+        var counter = 0
         for(entry in entryList){
+            counter += 1
+            if(counter % 10 != 0){
+                continue
+            }
             if ((lastItem.y >= threshold.y && entry.y >= threshold.y)
                     ||(lastItem.y < threshold.y && entry.y < threshold.y)){
-                segment.add(entry)
+                var updatedEntry = entry.copy()
+                updatedEntry.y = updatedEntry.y - threshold.y
+                segment.add(updatedEntry)
             }else{
-                segment.add(entry)
-                if(lastItem.y >= threshold.y) {
-                    AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_green_500), allLine_Data)
+                var updatedEntry = entry.copy()
+                updatedEntry.y = updatedEntry.y - threshold.y
+                segment.add(updatedEntry)
+                val style: LineStyle = if(lastItem.y >= threshold.y) {
+                    LineStyle(lineColor = ContextCompat.getColor(context, R.color.md_green_500),
+                            filled = true,
+                            filledColor = ContextCompat.getColor(context, R.color.md_green_500),
+                            highlightEnabled = false)
+
                 }else{
-                    AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_red_500), allLine_Data)
+                    LineStyle(lineColor = ContextCompat.getColor(context, R.color.md_red_500),
+                            filled = true,
+                            filledColor = ContextCompat.getColor(context, R.color.md_red_500),
+                            highlightEnabled = false)
                 }
+                AddOneLine(segment, style , allLine_Data)
                 segment = ArrayList()
-                segment.add(entry)
+                updatedEntry = entry.copy()
+                updatedEntry.y = updatedEntry.y - threshold.y
+                segment.add(updatedEntry)
 
             }
             lastItem = entry
         }
-        if(lastItem.y >= threshold.y) {
-            AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_green_500), allLine_Data)
-        }else{
-            AddOneLine(segment, "", ContextCompat.getColor(context, R.color.md_red_500), allLine_Data)
-        }
-//        AddOneLine(entryList,"",ContextCompat.getColor(context, R.color.md_blue_400),allLine_Data)
+        val style: LineStyle = if(lastItem.y >= threshold.y) {
+            LineStyle(lineColor = ContextCompat.getColor(context, R.color.md_green_500),
+                    filled = true,
+                    filledColor = ContextCompat.getColor(context, R.color.md_green_500),
+                    highlightEnabled = false)
 
+        }else{
+            LineStyle(lineColor = ContextCompat.getColor(context, R.color.md_red_500),
+                    filled = true,
+                    filledColor = ContextCompat.getColor(context, R.color.md_red_500),
+                    highlightEnabled = false)
+        }
+        AddOneLine(segment, style , allLine_Data)
+
+        if(!allLine_Data.isEmpty()) {
+            combinedData.setData(LineData(allLine_Data))
+        }
+        if(combinedData.allData.size > 0) {
+
+            mChart?.let {
+                it.data = combinedData
+                marketCapDefaults(it)
+                it.invalidate()
+            }
+        }
+        return allLine_Data
+    }
+
+    fun updateMarketCapGraph(allLine_Data: ArrayList<ILineDataSet>, mChart: CombinedChart?){
+        val combinedData = CombinedData()
 
         if(!allLine_Data.isEmpty()) {
             combinedData.setData(LineData(allLine_Data))
@@ -300,6 +344,7 @@ class ChartStyle(context: Context) {
             var displayText: Boolean = false,
             var textSize: Float = 10F,
             var textColor: Int = 0,
+            var highlightEnabled: Boolean = true,
             var type : Overlay.IndicatorType = Overlay.IndicatorType.Line
     )
 
@@ -410,7 +455,7 @@ class ChartStyle(context: Context) {
 
             lineDataSet.valueTextSize = lineStyle.textSize
             lineDataSet.valueTextColor = lineStyle.textColor
-            lineDataSet.isHighlightEnabled = true
+            lineDataSet.isHighlightEnabled = lineStyle.highlightEnabled
 //        lineDataSet.setDrawHighlightIndicators(true)
 //        lineDataSet.highLightColor = color
             lineDataSet.setDrawValues(lineStyle.drawValues)

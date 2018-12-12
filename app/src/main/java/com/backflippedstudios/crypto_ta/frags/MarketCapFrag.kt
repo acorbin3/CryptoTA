@@ -10,37 +10,42 @@ import com.backflippedstudios.crypto_ta.MainActivity
 import com.backflippedstudios.crypto_ta.R
 import com.backflippedstudios.crypto_ta.data.DataSource
 import com.backflippedstudios.crypto_ta.data.retrofit.CryptoList
-import com.backflippedstudios.crypto_ta.data.retrofit.Datum
 import com.backflippedstudios.crypto_ta.recyclerviews.MarketCapCardsAdapter
 import kotlinx.android.synthetic.main.market_overview_main_layout.view.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import retrofit2.Response
 
 class MarketCapFrag :Fragment(){
     val title = "Market Cap"
     private lateinit var adapter : MarketCapCardsAdapter
     private var marketData: Response<CryptoList>? = null
-    private lateinit var mainView: View
+    private var mainView: View? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         mainView = inflater.inflate(R.layout.market_overview_main_layout, container, false)
 
         // create list of Market data items.
         if(marketData == null) {
-            marketData = MainActivity.data.dataSource.getMarketCapV2()
+            try {
+                marketData = MainActivity.data.dataSource.getMarketCapV2()
+            }catch(e:Exception){
+
+            }
         }
         //TODO - support when response fails
         // create adapter
         adapter = MarketCapCardsAdapter(activity?.applicationContext!!,marketData?.body()?.data)
         //set adapter to RecyclerView
-        mainView.rv_market_overview.layoutManager = LinearLayoutManager(activity?.applicationContext,LinearLayoutManager.VERTICAL, false)
-        mainView.rv_market_overview.adapter = adapter
-        mainView.swipe_to_refresh_market_cap.setOnRefreshListener {
+        mainView?.rv_market_overview?.layoutManager = LinearLayoutManager(activity?.applicationContext,LinearLayoutManager.VERTICAL, false)
+        mainView?.rv_market_overview?.adapter = adapter
+        mainView?.swipe_to_refresh_market_cap?.setOnRefreshListener {
             adapter = MarketCapCardsAdapter(activity?.applicationContext!!, MainActivity.data.dataSource.getMarketCapV2()?.body()?.data)
 
-            mainView.rv_market_overview.adapter = adapter
-            mainView.rv_market_overview.adapter!!.notifyDataSetChanged()
-            mainView.swipe_to_refresh_market_cap.isRefreshing = false
+            mainView?.rv_market_overview?.adapter = adapter
+            mainView?.rv_market_overview?.adapter!!.notifyDataSetChanged()
+            mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
         }
         if(DataSource.data.coinData.isEmpty()) {
             processGraphs()
@@ -58,7 +63,7 @@ class MarketCapFrag :Fragment(){
                 return@launch
 
 
-            marketData?.body()?.data!!.forEachIndexed { index, item ->
+            marketData?.body()?.data?.forEachIndexed { index, item ->
                 var symbol = item.symbol
                 if(symbol == "MIOTA"){
                     symbol = "IOT"
@@ -87,12 +92,10 @@ class MarketCapFrag :Fragment(){
                             println("$url/ohlc")
                             foundExchangeWithUSD = true
                             //Get data from DataSource
-                            //notifiy that data change for specific item
-                            GlobalScope.launch {
-                                MainActivity.data.dataSource.processOHLC(symbol?.toLowerCase().toString(), url)
-                                activity?.runOnUiThread {
-                                    mainView.rv_market_overview.adapter!!.notifyItemChanged(index)
-                                }
+                            //notify that data change for specific item
+                            MainActivity.data.dataSource.processOHLC(symbol?.toLowerCase().toString(), url)
+                            activity?.runOnUiThread {
+                                mainView?.rv_market_overview?.adapter!!.notifyItemChanged(index)
                             }
                             break
                         }
@@ -109,7 +112,7 @@ class MarketCapFrag :Fragment(){
                                 GlobalScope.launch {
                                     MainActivity.data.dataSource.processOHLC(item.symbol?.toLowerCase().toString(), exchange.url)
                                     activity?.runOnUiThread {
-                                        mainView.rv_market_overview.adapter!!.notifyItemChanged(index)
+                                        mainView?.rv_market_overview?.adapter!!.notifyItemChanged(index)
                                     }
                                 }
                                 break

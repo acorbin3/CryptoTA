@@ -11,10 +11,11 @@ class VolumeBarDataSet( yVals: List<BarEntry>,label:String): BarDataSet(yVals,la
 
     override fun getColor(index: Int): Int {
         //Look at the data from DetailedAnalysisFrag to see if the volue was buy or sell volume.
+        DetailedAnalysisFrag.data.taDataLock.lock()
         if (index < DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ticksDataArray.size) {
             val open = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ticksDataArray[index].openPrice
             val close = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ticksDataArray[index].closePrice
-
+            DetailedAnalysisFrag.data.taDataLock.unlock()
             return when {
                 open > close -> mColors[0]  // Red for sell
                 close > open -> mColors[1]  // Green for buy
@@ -22,6 +23,7 @@ class VolumeBarDataSet( yVals: List<BarEntry>,label:String): BarDataSet(yVals,la
             }
         }
         else{
+            DetailedAnalysisFrag.data.taDataLock.unlock()
             return mColors.last()
         }
     }
