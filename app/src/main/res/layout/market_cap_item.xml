@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v7.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="3dp"
+    android:background="@color/md_grey_900">
+
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/md_grey_900">
+
+        <ImageView
+            android:id="@+id/iv_coin_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@android:drawable/ic_menu_help" />
+
+        <TextView
+            android:id="@+id/tv_coin_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:text="TextView"
+            app:layout_constraintLeft_toRightOf="@+id/iv_coin_icon" />
+
+        <TextView
+            android:id="@+id/tv_marketcap"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:text="TextView"
+            app:layout_constraintLeft_toRightOf="@+id/tv_coin_name" />
+
+        <TextView
+            android:id="@+id/tv_last_price"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:text="TextView"
+            app:layout_constraintLeft_toRightOf="@+id/iv_coin_icon"
+            app:layout_constraintTop_toBottomOf="@+id/tv_coin_name" />
+
+        <TextView
+            android:id="@+id/tv_volume"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:text="TextView"
+            app:layout_constraintLeft_toRightOf="@+id/tv_last_price"
+            app:layout_constraintTop_toBottomOf="@+id/tv_marketcap" />
+
+        <TextView
+            android:id="@+id/tv_supply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TextView"
+            app:layout_constraintLeft_toRightOf="@+id/tv_marketcap" />
+
+        <TextView
+            android:id="@+id/tv_percent_change_24h"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TextView"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/iv_coin_icon" />
+
+        <TextView
+            android:id="@+id/tv_percent_change_7d"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TextView"
+            app:layout_constraintTop_toBottomOf="@+id/market_cap_combined_chart_24h" />
+
+        <com.github.mikephil.charting.charts.CombinedChart
+            android:id="@+id/market_cap_combined_chart_24h"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:layout_margin="0dp"
+            android:padding="0dp"
+            android:paddingStart="0dp"
+            android:paddingTop="0dp"
+            android:paddingEnd="0dp"
+            android:paddingBottom="0dp"
+            app:layout_constraintTop_toBottomOf="@+id/tv_percent_change_24h"></com.github.mikephil.charting.charts.CombinedChart>
+
+        <com.github.mikephil.charting.charts.CombinedChart
+            android:id="@+id/market_cap_combined_chart_7d"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:layout_margin="0dp"
+            android:padding="0dp"
+            android:paddingStart="0dp"
+            android:paddingTop="0dp"
+            android:paddingEnd="0dp"
+            android:paddingBottom="0dp"
+            app:layout_constraintTop_toBottomOf="@+id/tv_percent_change_7d"></com.github.mikephil.charting.charts.CombinedChart>
+    </android.support.constraint.ConstraintLayout>
+
+</android.support.v7.widget.CardView>

@@ -3,25 +3,33 @@ package com.backflippedstudios.crypto_ta.data
 import android.content.Context
 import android.util.JsonReader
 import android.util.JsonToken
+import com.backflippedstudios.crypto_ta.data.retrofit.CryptoInfoList
+import com.backflippedstudios.crypto_ta.data.retrofit.CryptoList
+import com.backflippedstudios.crypto_ta.data.retrofit.market.CryptoMarketList
+import com.github.mikephil.charting.data.Entry
 import com.google.android.gms.tasks.Task
-import org.ta4j.core.BaseTick
-import org.ta4j.core.Decimal
-import org.ta4j.core.Tick
-import java.io.IOException
-import java.io.InputStreamReader
-import java.net.MalformedURLException
-import java.net.URL
-import org.threeten.bp.Instant
-import org.threeten.bp.ZoneId
-import java.util.*
-import javax.net.ssl.HttpsURLConnection
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.Source
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import org.json.JSONObject
+import org.ta4j.core.BaseTick
+import org.ta4j.core.Decimal
+import org.ta4j.core.Tick
+import org.threeten.bp.Instant
+import org.threeten.bp.ZoneId
+import retrofit2.Response
+import java.io.IOException
+import java.io.InputStreamReader
+import java.net.MalformedURLException
+import java.net.URL
+import java.util.*
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
+import javax.net.ssl.HttpsURLConnection
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 
 /**
@@ -65,33 +73,61 @@ class DataSource {
     object data{
         var coins: HashMap<String, Asset> = HashMap()
         var db = FirebaseFirestore.getInstance()
+        var coinData: HashMap<String,ArrayList<Entry>> = HashMap()
+        var lockCoinData: Lock = ReentrantLock()
+    }
+
+    fun processOHLC(coin: String, url: String){
+        var ticks = getTicks(url, Interval._3MIN.seconds)
+
+        var coin_24h = coin+"_24h"
+        var coin_7d = coin+"_7d"
+        data.lockCoinData.lock()
+        if(coin_24h !in data.coinData){
+            data.coinData[coin_24h] = ArrayList()
+        }
+        for(i in 0 until ticks.size){
+            data.coinData[coin_24h]?.add(Entry(i.toFloat(),ticks.get(i).closePrice.toDouble().toFloat()))
+        }
+        var ticks_7d = getTicks(url, Interval._15MIN.seconds)
+        if(coin_7d !in data.coinData){
+            data.coinData[coin_7d] = ArrayList()
+        }
+        for(i in 0 until ticks_7d.size){
+            data.coinData[coin_7d]?.add(Entry(i.toFloat(),ticks_7d.get(i).closePrice.toDouble().toFloat()))
+        }
+        data.lockCoinData.unlock()
     }
 
     fun getData(coin: String, exchange: String, currency: String, interval: Interval) : ArrayList<Tick> {
+
+        val granularity = interval.seconds
+        println("About to connect to gdax api")
+        val startCal = Calendar.getInstance()
+        startCal.set(2016, 10, 10)
+        val endCal = Calendar.getInstance()
+        endCal.set(2016, 9, 10)
+
+        //println("Start: " + start.fromCalendar(startCal))
+        //println("End: " + end.fromCalendar(endCal))
+        //val url = URL("https://api.gdax.com/products/ETH-USD/candles?granularity="+granularity)
+        val exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
+            it.paring.contains(currency.toLowerCase())&&
+                    it.exchange.toLowerCase() == exchange.toLowerCase()
+        }
+
+        if(exchangeData?.size == 0){
+            return ArrayList<Tick>()
+        }
+
+        return getTicks(exchangeData?.get(0)?.url.toString(), granularity)
+    }
+
+    private fun getTicks(baseURL: String, granularity: Long): ArrayList<Tick> {
         val ticks = ArrayList<Tick>()
         try {
-
-            var granularity = interval.seconds
-            println("About to connect to gdax api")
-            var startCal = Calendar.getInstance()
-            startCal.set(2016, 10, 10)
-            var endCal = Calendar.getInstance()
-            endCal.set(2016, 9, 10)
-
-            //println("Start: " + start.fromCalendar(startCal))
-            //println("End: " + end.fromCalendar(endCal))
-            //val url = URL("https://api.gdax.com/products/ETH-USD/candles?granularity="+granularity)
-            var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
-                it.paring.contains(currency.toLowerCase())&&
-                        it.exchange.toLowerCase() == exchange.toLowerCase()
-            }
-
-            if(exchangeData?.size == 0){
-                return ticks
-            }
-
-            println("Connecting to " + exchangeData?.get(0)?.url + "/ohlc?periods="+granularity)
-            var url = URL(exchangeData?.get(0)?.url + "/ohlc?periods="+granularity)
+            println("Connecting to $baseURL/ohlc?periods=$granularity")
+            val url = URL("$baseURL/ohlc?periods=$granularity")
             val connection = url.openConnection() as HttpsURLConnection
             connection.requestMethod = "GET"
             //connection.setRequestProperty("Accept", "application/json");
@@ -113,7 +149,7 @@ class DataSource {
             jsonReader.beginObject()//Start period object
             jsonReader.nextName()
             val peak = jsonReader.peek()
-            if(peak == JsonToken.NULL){
+            if (peak == JsonToken.NULL) {
                 println("Bad coin")
                 return ticks
             }
@@ -124,9 +160,9 @@ class DataSource {
                 while (jsonReader.hasNext()) { // Loop through all keys
                     val time = jsonReader.nextInt()
 
-//                    val dtf = DateTimeFormat.forPattern("yyyy-MMMM-dd hh:mm:ssa")
-//                    val date = Date(time * 1000L)
-//                    val dateTime = DateTime(date)
+    //                    val dtf = DateTimeFormat.forPattern("yyyy-MMMM-dd hh:mm:ssa")
+    //                    val date = Date(time * 1000L)
+    //                    val dateTime = DateTime(date)
                     //println(date.toString())
                     //println(dtf.print(dateTime))
 
@@ -137,34 +173,33 @@ class DataSource {
                     val close = jsonReader.nextDouble() // Fetch the next key
                     val volume = jsonReader.nextDouble() // Fetch the next key
                     val peak = jsonReader.peek()
-                    if(peak == JsonToken.NUMBER){
+                    if (peak == JsonToken.NUMBER) {
                         val unknownFloat = jsonReader.nextDouble()
                     }
 
-                    var i = Instant.ofEpochSecond(time.toLong())
+                    val i = Instant.ofEpochSecond(time.toLong())
                     val z = i.atZone(ZoneId.systemDefault())
                     //clean open and close betwwen last 2 ticks so we don't have gaps
-                    if(lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
+                    if (lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
                         open = lastTick.closePrice.toDouble()
                     }
-                    var currentTick = BaseTick(z,
+                    val currentTick = BaseTick(z,
                             Decimal.valueOf(open),
                             Decimal.valueOf(high),
                             Decimal.valueOf(low),
                             Decimal.valueOf(close),
                             Decimal.valueOf(volume))
                     //Filter out bad data if we get a zero value
-                    if(currentTick.closePrice.isEqual(Decimal.valueOf(0)) or currentTick.minPrice.isEqual(Decimal.valueOf(0))){
-                        if(lastTick != null)
+                    if (currentTick.closePrice.isEqual(Decimal.valueOf(0)) or currentTick.minPrice.isEqual(Decimal.valueOf(0))) {
+                        if (lastTick != null)
                             ticks.add(lastTick)
-                    }
-                    else{
+                    } else {
 
                         ticks.add(currentTick)
                         lastTick = currentTick
                     }
-//                    println(" Time:" + time + " Low:" + low +
-//                            " High:" + high + " Open:" + open + " Close:" + close + " Volume:" + volume)
+    //                    println(" Time:" + time + " Low:" + low +
+    //                            " High:" + high + " Open:" + open + " Close:" + close + " Volume:" + volume)
                 }
                 jsonReader.endArray()
             }
@@ -172,25 +207,22 @@ class DataSource {
             jsonReader.close()
             connection.disconnect()
             println("Finished parsing and found: " + ticks.size)
-        }
-        catch (e : MalformedURLException) {
+        } catch (e: MalformedURLException) {
             e.printStackTrace()
         } catch (e: IOException) {
             e.printStackTrace()
-        }
-        catch (e: NumberFormatException){
+        } catch (e: NumberFormatException) {
             e.printStackTrace()
             ticks.clear()
             return ticks
         }
-
         return ticks
     }
 
     fun getCurrentValue(coin: String, exchange: String, currency: String) : Float{
         var endPrice = 0.0F
 
-        var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
+        val exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
             it.paring.contains(currency.toLowerCase())&&
                     it.exchange.toLowerCase() == exchange.toLowerCase()
         }
@@ -199,7 +231,7 @@ class DataSource {
         }
         val urlStr = "${exchangeData?.get(0)?.url}/price"
 
-        var url = URL(urlStr)
+        val url = URL(urlStr)
 //        println("Getting current price: $urlStr. Coin $coin currency $currency exchange $exchange")
         try {
             val connection = url.openConnection() as HttpsURLConnection
@@ -253,6 +285,141 @@ class DataSource {
 
         return usdValue
     }
+    data class CoinData(
+            val coinPair: String,
+            var avgPercentChange: Double,
+            val marketList: ArrayList<MarketData>
+    )
+    data class MarketData(
+            val exchange: String,
+            val coinPair: String,
+            val lastPrice: Double,
+            val percentChange: Double
+    )
+
+    fun getCryptoInfo(symbol: String): Response<CryptoInfoList>?{
+        val apiInfoInterface = APIClient.client.create(APIInfoInterface::class.java)
+        val call = apiInfoInterface.getCryptoInfo(symbol)
+        return call.execute()
+    }
+
+    fun getMarketCapV2(): Response<CryptoList>? {
+        val apiInterface = APIClient.client.create(APIInterface::class.java)
+
+        val call2 = apiInterface.doGetUserList("100")
+        try {
+            return call2.execute()
+        } catch (e: Exception){
+
+        }
+        return null
+    }
+
+    fun getMarketGraphSummary(symbol: String): Response<CryptoMarketList>? {
+        val apiInterface = APIClient.client.create(APIMarketInterface::class.java)
+
+        val call2 = apiInterface.getMarketInfo(symbol)
+
+        return call2.execute()
+    }
+
+    fun getMarketCap(){
+        val apiKey = "c2690900-7d25-4e55-88aa-ef7fdaa7030b"
+        val listing = "/v1/cryptocurrency/listings/latest"
+        val sandboxURL = URL("https://sandbox.coinmarketcap.com$listing")
+        val url = URL("https://pro.coinmarketcap.com$listing")
+
+        try{
+            val connection = sandboxURL.openConnection() as HttpsURLConnection
+            connection.requestMethod = "GET"
+            val header = JSONObject()
+            header.put("Accept","application/json")
+            header.put("Accept-Encoding","deflate, gzip")
+            header.put("X-CMC_PRO_API_KEY",apiKey)
+            connection.setRequestProperty("headers",header.toString())
+
+            println(connection.requestProperties.toList().toString())
+
+            if(connection.responseCode == 200){
+                println("!@#$$$$$$ Success")
+                val responseBody = connection.inputStream
+                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
+                //println(responseBodyReader)
+                val jsonReader = JsonReader(responseBodyReader)
+                println(jsonReader.toString())
+            }else{
+                println("!@#$$$$ Connection failed ${connection.responseCode }")
+            }
+        }catch (e:Exception){
+            println(e.message)
+        }
+    }
+
+    fun getMarketSummary() : List<MarketData>{
+        val allCoinData = ArrayList<MarketData>()
+        val url = URL("https://api.cryptowat.ch/markets/summaries")
+
+//        println("Getting current price: $urlStr. Coin $coin currency $currency exchange $exchange")
+        try {
+            val connection = url.openConnection() as HttpsURLConnection
+
+            if (connection.responseCode == 200) {
+                // Success
+                // Further processing here
+//            println("Response: " + connection.responseCode)
+                val responseBody = connection.inputStream
+                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
+                //println(responseBodyReader)
+                val jsonReader = JsonReader(responseBodyReader)
+                //Result:
+                //exchange:pair
+                //{"result":{"binance:adabnb":{"price":{"last":0.0075,"high":0.00796,"low":0.0071,"change":{"percentage":-0.05422452,"absolute":-0.00043000048}},
+                // "volume":4752513.8,"volumeQuote":36312.847131}
+                jsonReader.beginObject()//Start results object
+                jsonReader.nextName()
+                jsonReader.beginObject()
+                while(jsonReader.hasNext()) {
+                    val exchange_pair = jsonReader.nextName()
+                    jsonReader.beginObject()//Enter price object
+                    jsonReader.nextName() // Price name
+                    jsonReader.beginObject()//Enter price object value
+                    jsonReader.nextName()
+                    val last = jsonReader.nextDouble()
+                    jsonReader.nextName()
+                    val high = jsonReader.nextDouble().toFloat()
+                    jsonReader.nextName()
+                    val low = jsonReader.nextDouble().toFloat()
+                    jsonReader.nextName() // change name
+                    jsonReader.beginObject()//Enter Change value
+                    jsonReader.nextName() // percentange name
+                    val percent = jsonReader.nextDouble()
+                    jsonReader.nextName()// absolute name
+                    val absolute = jsonReader.nextDouble().toFloat()
+                    jsonReader.endObject() // End Change
+                    jsonReader.endObject() // End price
+                    jsonReader.nextName()// volume name
+                    val volume = jsonReader.nextDouble().toFloat()
+                    jsonReader.nextName()// volumeQuote name
+                    val volumeQuote = jsonReader.nextDouble().toFloat()
+                    jsonReader.endObject() // End exchagnge_pair
+                    val exchange = exchange_pair.split(":")[0]
+                    val pair = exchange_pair.split(":")[1]
+                    val marketData = MarketData(exchange,pair,last,percent)
+                    allCoinData.add(marketData)
+                }
+
+                jsonReader.close()
+                connection.disconnect()
+            } else {
+                // Error handling code goes here
+            }
+        }catch (e: Exception){
+            println(e.message)
+        }
+        //Filter out only
+        return allCoinData.toList().sortedByDescending { it.percentChange}
+    }
+
     fun initExchangesForCoin(coinSymbol: String){
         //Check to see if we need to get exchanges only if coin doesnt have exchange list already
         if(data.coins[coinSymbol]?.exchanges == null) return
@@ -264,7 +431,7 @@ class DataSource {
         }
 
         try {
-            var url = URL("https://api.cryptowat.ch/assets/" + coinSymbol)
+            val url = URL("https://api.cryptowat.ch/assets/" + coinSymbol)
             val connection = url.openConnection() as HttpsURLConnection
             connection.requestMethod = "GET"
             if (connection.responseCode == 200) {
@@ -290,14 +457,14 @@ class DataSource {
                 jsonReader.beginObject()//Start Markets object
                 jsonReader.nextName() // Base item
                 jsonReader.beginArray() // Start processing the base object
-                var coin = java.util.HashMap<String, Any>()
+                val coin = java.util.HashMap<String, Any>()
                 data.coins[coinSymbol].let {
                     coin["id"] = it!!.id
                     coin["s"] = it.symbol
                     coin["n"] = it.name
                     coin["flt"] = it.FiatLegalTender
                 }
-                var exchangeData = ArrayList<java.util.HashMap<String, Any>>()
+                val exchangeData = ArrayList<java.util.HashMap<String, Any>>()
                 while (jsonReader.hasNext()) { // Loop through all keys
                     jsonReader.beginObject()
                     jsonReader.nextName()
@@ -328,7 +495,7 @@ class DataSource {
                         .add(coin)
                         .addOnSuccessListener {
                         }
-                data.coins.get(coinSymbol).let { println(it?.exchanges?.toString()) }
+                println(data.coins[coinSymbol]?.exchanges?.toString())
             } else {
                 // Error handling code goes here
             }
@@ -340,7 +507,7 @@ class DataSource {
         }
     }
     fun initCoins(){
-        var url = URL("https://api.cryptowat.ch/assets")
+        val url = URL("https://api.cryptowat.ch/assets")
         try {
             val connection = url.openConnection() as HttpsURLConnection
             connection.requestMethod = "GET"
@@ -383,7 +550,7 @@ class DataSource {
     }
 
     fun initCoinsV2(){
-        var url = URL("https://api.cryptowat.ch/assets")
+        val url = URL("https://api.cryptowat.ch/assets")
         try {
             val connection = url.openConnection() as HttpsURLConnection
             connection.requestMethod = "GET"
@@ -437,7 +604,7 @@ class DataSource {
         println("Coins are the same, loading from DAO")
         if(mDB?.assetDataDao()?.getAll() != null) {
             for (item in mDB?.assetDataDao()?.getAll()?.iterator()!!) {
-                var asset: DataSource.Asset = Gson().fromJson(item.asset, DataSource.Asset::class.java)
+                val asset: DataSource.Asset = Gson().fromJson(item.asset, DataSource.Asset::class.java)
                 data.coins[asset.symbol] = asset
             }
         }
@@ -453,8 +620,10 @@ class DataSource {
 
     fun intCoins3(context: Context): Task<QuerySnapshot> {
         mDB = AssetDataBase.getInstance(context = context)
+
         return data.db.collection("coinpairs").get(Source.DEFAULT)
                 .addOnSuccessListener {
+
                     println("Updating data coins from FirebStore")
                     it.forEach {
                         data.coins[it.data["s"].toString()] = Asset(it.data["id"].toString().toInt(),
@@ -473,7 +642,7 @@ class DataSource {
                                     ))
                         }
                         // load DAO
-                        var assetData = AssetData()
+                        val assetData = AssetData()
                         assetData.asset = Gson().toJson(data.coins[it.data["s"].toString()])
                         mDB?.assetDataDao()?.insert(assetData)
                     }

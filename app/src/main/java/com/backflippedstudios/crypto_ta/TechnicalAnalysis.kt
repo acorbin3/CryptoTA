@@ -3,9 +3,13 @@ package com.backflippedstudios.crypto_ta
 import android.os.Bundle
 import com.backflippedstudios.crypto_ta.Overlay.Kind.*
 import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
+import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.data.CandleEntry
 import com.github.mikephil.charting.data.Entry
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.ta4j.core.BaseTimeSeries
 import org.ta4j.core.Tick
 import org.ta4j.core.TimeSeries
@@ -123,7 +127,7 @@ class TechnicalAnalysis {
     }
 
 
-    fun updateNonSelectedItems() {
+    fun updateNonSelectedItems() = runBlocking {
         var overlayList = ArrayList<Overlay.Kind>()
         for(overlay in OverlayAdapter.data.list){
             overlayList.add(overlay.kind)
@@ -131,26 +135,31 @@ class TechnicalAnalysis {
         for (overlayKind in overlayList) {
             println("Loading $overlayKind")
             val overlay = OverlayAdapter.data.all[overlayKind]!!
-            if (MainActivity.data.endTA) {
+            if (DetailedAnalysisFrag.data.endTA) {
                 println("Ending non selected items recalculation")
-                MainActivity.data.endTA = false
+                DetailedAnalysisFrag.data.endTA = false
                 break
             }
             // Possible enhancement that the main kind
-            if (overlay.selected && MainActivity.data.all_ta[MainActivity.data.saved_time_period].getData(overlay.kind).size > 0) {
+            DetailedAnalysisFrag.data.taDataLock.lock()
+            if (overlay.selected && DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].getData(overlay.kind).size > 0) {
                 println("Skipping ${overlay.kind}")
+                DetailedAnalysisFrag.data.taDataLock.unlock()
                 continue
             }
-            try {
-                recalculateData(overlay.kind)
-            } catch (e: Exception) {
-                println("Crash ${e.localizedMessage} ${e.stackTrace}")
+            DetailedAnalysisFrag.data.taDataLock.unlock()
+            GlobalScope.launch {
+                try {
+                    recalculateData(overlay.kind)
+                } catch (e: Exception) {
+                    println("Crash ${e.localizedMessage} ${e.stackTrace}")
+                }
             }
         }
 
     }
 
-    fun updateTASmart() {
+    private fun updateTASmart() {
 
         for (overlay in OverlayAdapter.data.list) {
             if (!overlay.selected) {
@@ -169,125 +178,127 @@ class TechnicalAnalysis {
         }
         println("Recalculating $overlayKind")
 
-        when (overlayKind) {
-            Volume_Bars -> updateVolumeBarData()
-            AroonUpDown -> updateAroonUpDownData()
-            AroonOsci -> updateAroonOscilatorData()
-            RSI -> updateRSI(this.closePrice, OverlayAdapter.getTimeframe(RSI).toInt())
-            DPO -> updateDPO(this.ts, OverlayAdapter.getTimeframe(DPO).toInt())
-            Stoch_Oscill -> updateStochasticOscil(this.ts, OverlayAdapter.getTimeframe(Stoch_Oscill).toInt(),
-                    OverlayAdapter.getTimeframeSMA(Stoch_Oscill).toInt())
-            PPO -> updatePPO(OverlayAdapter.getShortTerm(Overlay.Kind.PPO).toInt(),
-                    OverlayAdapter.getLongTerm(Overlay.Kind.PPO).toInt(),
-                    OverlayAdapter.getPPOEMA(Overlay.Kind.PPO).toInt())
-            Bollinger_Bands -> updateBollingerBandsData(this.closePrice, OverlayAdapter.getTimeframe(Bollinger_Bands).toInt())
-            Bollinger_Band_Percent_B -> updateBBPercentB(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getK(overlayKind))
-            Keltner_Channel -> updatekeltnerChannel(this.closePrice, OverlayAdapter.getTimeframe(Keltner_Channel).toInt(),
-                    OverlayAdapter.getRatio(Keltner_Channel).toInt())
-            Simple_Moving_Avg -> updateSMA(this.closePrice, OverlayAdapter.getTimeframe(Simple_Moving_Avg).toInt())
-            Exponential_MA -> updateEMA(this.closePrice, OverlayAdapter.getTimeframe(Exponential_MA).toInt())
-            Parabolic_SAR -> updateParabolicSAR(OverlayAdapter.getAccFactor(Parabolic_SAR),
-                    OverlayAdapter.getMaxAcc(Parabolic_SAR))
-            Chandelier_Exit_Long -> updateChandelierExitLong(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit_Long).toInt(),
-                    Decimal.valueOf(OverlayAdapter.getRatio(D_CEL_Ratio)))
-            Chandelier_Exit_Short -> updateChandelierExitShort(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit_Short).toInt(),
-                    Decimal.valueOf(OverlayAdapter.getRatio(D_CES_Ratio)))
-            Ichimoku_Cloud -> updateIchimokuCloud(OverlayAdapter.getConversionPeriod(Ichimoku_Cloud).toInt(),
-                    OverlayAdapter.getBase(Ichimoku_Cloud).toInt(),
-                    OverlayAdapter.getLeadingPeriod(Ichimoku_Cloud).toInt(),
-                    OverlayAdapter.getLaggingPeriod(Ichimoku_Cloud).toInt())
-            ZigZag -> updateZigZag(OverlayAdapter.getThresholdPercent(ZigZag))
-            Hull_Moving_Average -> updateHMA(OverlayAdapter.getTimeframe(Hull_Moving_Average).toInt())
-            Zero_Lag_Moving_Average -> updateZLEMA(OverlayAdapter.getTimeframe(Zero_Lag_Moving_Average).toInt())
-            Volume_Weighted_Average_Price -> updateVWAP(OverlayAdapter.getTimeframe(Volume_Weighted_Average_Price).toInt())
-            Moving_Volume_Weighted_Average_Price -> updateMVWAP(OverlayAdapter.getTimeframe(Moving_Volume_Weighted_Average_Price).toInt())
-            Awesome_Oscillator -> updateAO(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
-            Rate_Of_Change -> updateROC(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Chande_Momentum_Oscillator -> updateCMO(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Coppock_Curve -> updateCC(OverlayAdapter.getTimeframe(overlayKind).toInt(),
-                    OverlayAdapter.getTimeframe2(overlayKind).toInt(),
-                    OverlayAdapter.getTimeframe3(overlayKind).toInt())
-            Accumulation_Distribution -> updateAccumDist()
-            Williams__R -> updateWR(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Ulcer_Index -> updateUlcerIndex(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Chaikin_Money_Flow -> updateChaikinMoneyFlow(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Positive_Volume -> updatePositiveVolume()
-            Negative_Volume -> updateNegativeVolume()
-            On_Balance_Volume -> updateOnBalanceVolume()
-            Pivot_Point -> {
-                val timeLevel: TimeLevel = if (MainActivity.data.saved_time_period < 6) {
-                    TimeLevel.DAY
-                } else {
-                    TimeLevel.WEEK
-                }
-                updatePivotPoints(timeLevel)
-            }
-            DeMark_Pivot_Point -> {
-                val timeLevel: TimeLevel = if (MainActivity.data.saved_time_period < 6) {
-                    TimeLevel.DAY
-                } else {
-                    TimeLevel.WEEK
-                }
-                updateDeMarkPivotPoint(timeLevel)
-
-            }
-            Fibonacci_Reversal_Resistance -> {
-                val timeLevel: TimeLevel = if (MainActivity.data.saved_time_period < 6) {
-                    TimeLevel.DAY
-                } else {
-                    TimeLevel.WEEK
-                }
-                updateFibReversalResistance(timeLevel)
-            }
-            Fibonacci_Reversal_Support -> {
-                val timeLevel: TimeLevel = if (MainActivity.data.saved_time_period < 6) {
-                    TimeLevel.DAY
-                } else {
-                    TimeLevel.WEEK
-                }
-                updateFibReversalSupport(timeLevel)
-            }
-            CCI -> updateCCI(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Fisher_Transform -> updateFisherTransform(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Periodical_Growth_Rate -> updatePeriodicalGrowthRate(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Simple_Linear_Regression -> updateSimpleLinearRegression(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Standard_Deviation -> updateStandardDeviation(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Standard_Error -> updateStandardError(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Variance_Indicator -> updateVariance(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Mass_Index -> updateMassIndex(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
-            Trailing_Stop_Loss -> updateTrailingStopLoss(Decimal.valueOf(OverlayAdapter.getTimeframe(overlayKind).toInt()), Decimal.valueOf(OverlayAdapter.getTimeframe2(overlayKind).toInt()))
-            MACD -> updateMACD(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
-            RAVI -> updateRAVI(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
-            Random_Walking_Index -> updateRandomWalkingIndex(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
-            Double_EMA -> updateDoubleEMA(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Triple_EMA -> updateTripleEMA(OverlayAdapter.getTimeframe(overlayKind).toInt())
-            Kaufman_Adaptive_MA -> updateKAMA(OverlayAdapter.getTimeframe(Kaufman_Adaptive_MA).toInt(),
-                    OverlayAdapter.getTimeframeFast(Kaufman_Adaptive_MA).toInt(),
-                    OverlayAdapter.getTimeframeSlow(Kaufman_Adaptive_MA).toInt())
-            Exponential_MA_Ribbon -> updateEMARibbon()
-            Average_Directional_Index -> updateAvgDirectionalMovement(OverlayAdapter.getTimeframe(overlayKind).toInt())
-        }
-
-        //Add extra padding for seperate charts when IchCloud is on
-        if (isIchCloudSelected()) {
-            for (overlay in OverlayAdapter.data.all) {
-                if (overlayKind == overlay.value.kindData.parentKind
-                        && OverlayAdapter.data.all[overlay.value.kindData.parentKind]?.separateChart!!
-                        && overlay.value.kindData.hasData
-                ) {
-                    if (overlay.value.kind == Volume_Bars) {
-                        if (this.getEntryData(overlay.value.kind).isNotEmpty())
-                            addXNumberOfEmptyBarEntries(ticksDataArray.indices.last,
-                                    OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt(),
-                                    this.getBarData(Volume_Bars))
+        try {
+            when (overlayKind) {
+                Volume_Bars -> updateVolumeBarData()
+                AroonUpDown -> updateAroonUpDownData()
+                AroonOsci -> updateAroonOscilatorData()
+                RSI -> updateRSI(this.closePrice, OverlayAdapter.getTimeframe(RSI).toInt())
+                DPO -> updateDPO(this.ts, OverlayAdapter.getTimeframe(DPO).toInt())
+                Stoch_Oscill -> updateStochasticOscil(this.ts, OverlayAdapter.getTimeframe(Stoch_Oscill).toInt(),
+                        OverlayAdapter.getTimeframeSMA(Stoch_Oscill).toInt())
+                PPO -> updatePPO(OverlayAdapter.getShortTerm(Overlay.Kind.PPO).toInt(),
+                        OverlayAdapter.getLongTerm(Overlay.Kind.PPO).toInt(),
+                        OverlayAdapter.getPPOEMA(Overlay.Kind.PPO).toInt())
+                Bollinger_Bands -> updateBollingerBandsData(this.closePrice, OverlayAdapter.getTimeframe(Bollinger_Bands).toInt())
+                Bollinger_Band_Percent_B -> updateBBPercentB(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getK(overlayKind))
+                Keltner_Channel -> updatekeltnerChannel(this.closePrice, OverlayAdapter.getTimeframe(Keltner_Channel).toInt(),
+                        OverlayAdapter.getRatio(Keltner_Channel).toInt())
+                Simple_Moving_Avg -> updateSMA(this.closePrice, OverlayAdapter.getTimeframe(Simple_Moving_Avg).toInt())
+                Exponential_MA -> updateEMA(this.closePrice, OverlayAdapter.getTimeframe(Exponential_MA).toInt())
+                Parabolic_SAR -> updateParabolicSAR(OverlayAdapter.getAccFactor(Parabolic_SAR),
+                        OverlayAdapter.getMaxAcc(Parabolic_SAR))
+                Chandelier_Exit_Long -> updateChandelierExitLong(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit_Long).toInt(),
+                        Decimal.valueOf(OverlayAdapter.getRatio(D_CEL_Ratio)))
+                Chandelier_Exit_Short -> updateChandelierExitShort(this.ts, OverlayAdapter.getTimeframe(Chandelier_Exit_Short).toInt(),
+                        Decimal.valueOf(OverlayAdapter.getRatio(D_CES_Ratio)))
+                Ichimoku_Cloud -> updateIchimokuCloud(OverlayAdapter.getConversionPeriod(Ichimoku_Cloud).toInt(),
+                        OverlayAdapter.getBase(Ichimoku_Cloud).toInt(),
+                        OverlayAdapter.getLeadingPeriod(Ichimoku_Cloud).toInt(),
+                        OverlayAdapter.getLaggingPeriod(Ichimoku_Cloud).toInt())
+                ZigZag -> updateZigZag(OverlayAdapter.getThresholdPercent(ZigZag))
+                Hull_Moving_Average -> updateHMA(OverlayAdapter.getTimeframe(Hull_Moving_Average).toInt())
+                Zero_Lag_Moving_Average -> updateZLEMA(OverlayAdapter.getTimeframe(Zero_Lag_Moving_Average).toInt())
+                Volume_Weighted_Average_Price -> updateVWAP(OverlayAdapter.getTimeframe(Volume_Weighted_Average_Price).toInt())
+                Moving_Volume_Weighted_Average_Price -> updateMVWAP(OverlayAdapter.getTimeframe(Moving_Volume_Weighted_Average_Price).toInt())
+                Awesome_Oscillator -> updateAO(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
+                Rate_Of_Change -> updateROC(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Chande_Momentum_Oscillator -> updateCMO(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Coppock_Curve -> updateCC(OverlayAdapter.getTimeframe(overlayKind).toInt(),
+                        OverlayAdapter.getTimeframe2(overlayKind).toInt(),
+                        OverlayAdapter.getTimeframe3(overlayKind).toInt())
+                Accumulation_Distribution -> updateAccumDist()
+                Williams__R -> updateWR(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Ulcer_Index -> updateUlcerIndex(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Chaikin_Money_Flow -> updateChaikinMoneyFlow(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Positive_Volume -> updatePositiveVolume()
+                Negative_Volume -> updateNegativeVolume()
+                On_Balance_Volume -> updateOnBalanceVolume()
+                Pivot_Point -> {
+                    val timeLevel: TimeLevel = if (DetailedAnalysisFrag.data.saved_time_period < 6) {
+                        TimeLevel.DAY
                     } else {
-                        if (this.getEntryData(overlay.value.kind).isNotEmpty())
-                            addXNumberOfEmptyEntries(ticksDataArray.indices.last,
-                                    OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt(),
-                                    this.getEntryData(overlay.value.kind))
+                        TimeLevel.WEEK
+                    }
+                    updatePivotPoints(timeLevel)
+                }
+                DeMark_Pivot_Point -> {
+                    val timeLevel: TimeLevel = if (DetailedAnalysisFrag.data.saved_time_period < 6) {
+                        TimeLevel.DAY
+                    } else {
+                        TimeLevel.WEEK
+                    }
+                    updateDeMarkPivotPoint(timeLevel)
+
+                }
+                Fibonacci_Reversal_Resistance -> {
+                    val timeLevel: TimeLevel = if (DetailedAnalysisFrag.data.saved_time_period < 6) {
+                        TimeLevel.DAY
+                    } else {
+                        TimeLevel.WEEK
+                    }
+                    updateFibReversalResistance(timeLevel)
+                }
+                Fibonacci_Reversal_Support -> {
+                    val timeLevel: TimeLevel = if (DetailedAnalysisFrag.data.saved_time_period < 6) {
+                        TimeLevel.DAY
+                    } else {
+                        TimeLevel.WEEK
+                    }
+                    updateFibReversalSupport(timeLevel)
+                }
+                CCI -> updateCCI(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Fisher_Transform -> updateFisherTransform(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Periodical_Growth_Rate -> updatePeriodicalGrowthRate(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Simple_Linear_Regression -> updateSimpleLinearRegression(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Standard_Deviation -> updateStandardDeviation(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Standard_Error -> updateStandardError(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Variance_Indicator -> updateVariance(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                Mass_Index -> updateMassIndex(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
+                Trailing_Stop_Loss -> updateTrailingStopLoss(Decimal.valueOf(OverlayAdapter.getTimeframe(overlayKind).toInt()), Decimal.valueOf(OverlayAdapter.getTimeframe2(overlayKind).toInt()))
+                MACD -> updateMACD(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
+                RAVI -> updateRAVI(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
+                Random_Walking_Index -> updateRandomWalkingIndex(OverlayAdapter.getTimeframe(overlayKind).toInt(), OverlayAdapter.getTimeframe2(overlayKind).toInt())
+                Kaufman_Adaptive_MA -> updateKAMA(OverlayAdapter.getTimeframe(Kaufman_Adaptive_MA).toInt(),
+                        OverlayAdapter.getTimeframeFast(Kaufman_Adaptive_MA).toInt(),
+                        OverlayAdapter.getTimeframeSlow(Kaufman_Adaptive_MA).toInt())
+                Exponential_MA_Ribbon -> updateEMARibbon()
+                Average_Directional_Index -> updateAvgDirectionalMovement(OverlayAdapter.getTimeframe(overlayKind).toInt())
+            }
+
+            //Add extra padding for seperate charts when IchCloud is on
+            if (isIchCloudSelected()) {
+                for (overlay in OverlayAdapter.data.all) {
+                    if (overlayKind == overlay.value.kindData.parentKind
+                            && OverlayAdapter.data.all[overlay.value.kindData.parentKind]?.separateChart!!
+                            && overlay.value.kindData.hasData
+                    ) {
+                        if (overlay.value.kind == Volume_Bars) {
+                            if (this.getEntryData(overlay.value.kind).isNotEmpty())
+                                addXNumberOfEmptyBarEntries(ticksDataArray.indices.last,
+                                        OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt(),
+                                        this.getBarData(Volume_Bars))
+                        } else {
+                            if (this.getEntryData(overlay.value.kind).isNotEmpty())
+                                addXNumberOfEmptyEntries(this.getEntryData(overlay.value.kind).last().x.toInt(),
+                                        OverlayAdapter.getLaggingPeriod(Overlay.Kind.Ichimoku_Cloud).toInt(),
+                                        this.getEntryData(overlay.value.kind))
+                        }
                     }
                 }
+
             }
+        }catch (e: Exception){
 
         }
     }
@@ -837,23 +848,6 @@ class TechnicalAnalysis {
         }
     }
 
-    private fun updateTripleEMA(timeFrame: Int) {
-        try {
-
-            val kind = Triple_EMA
-            this.getEntryData(kind).clear()
-            val data = TripleEMAIndicator(this.closePrice, timeFrame)
-            for (i in 0 until closePrice.timeSeries.tickCount) {
-                if (data.timeSeries.tickCount > i) {
-                    val value = data.getValue(i).toDouble().toFloat()
-                    this.getEntryData(kind).add(Entry(i.toFloat(), value))
-                }
-            }
-        } catch (E: StackOverflowError) {
-
-        }
-    }
-
     private fun updateAccumDist() {
         val kind = Accumulation_Distribution
         this.getEntryData(kind).clear()
@@ -1048,24 +1042,6 @@ class TechnicalAnalysis {
                 this.getEntryData(D_BB_Lower).add(Entry(j.toFloat(), bbLowerIndicator.getValue(j).toDouble().toFloat()))
         }
         updateBBWidth()
-    }
-
-    private fun updateDoubleEMA(timeFrame: Int) {
-        val kind = Double_EMA
-        this.getEntryData(kind).clear()
-        try {
-            val _data = DoubleEMAIndicator(this.closePrice, timeFrame)
-
-            for (j in 0 until closePrice.timeSeries.tickCount) {
-                if (j < _data.timeSeries.tickCount)
-                    this.getEntryData(kind).add(Entry(j.toFloat(), _data.getValue(j).toDouble().toFloat()))
-            }
-        }catch (e: StackOverflowError){
-            val bundle = Bundle()
-            bundle.putString("uuid", MainActivity.data.uuid)
-            bundle.putString("Function", "updateDoubleEMA")
-            MainActivity.data.mFirebaseAnalytics.logEvent("StackOverflow", bundle)
-        }
     }
 
     private fun updateBBPercentB(timeFrame: Int, k: Int) {

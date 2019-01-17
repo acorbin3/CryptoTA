@@ -1,4 +1,4 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
 
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.formatter.IFillFormatter

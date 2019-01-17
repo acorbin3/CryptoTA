@@ -315,27 +315,6 @@ data class Overlay(val context: Context, val kind: Kind){
                 kindData = KindData(false,true,Kind.Chandelier_Exit_Short,-1,0)
             }
 
-            Overlay.Kind.Double_EMA ->{
-                values[0].value = 9.0
-                values[0].min = 2.0
-                values[0].max = 30.0
-                this.timeFrame = 0
-                this.ratio = 1
-                allIndicatorInfo[0].label = this.kind.toString().replace("_", " ")
-                allIndicatorInfo[0].selectedLegendLabel = "DEMA"
-                kindData = KindData(true,false,this.kind, -1,0, true, true)
-                allIndicatorInfo[0].color = sharedPref.getInt(this.kind.toString() + "_COLOR",0)
-                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
-            }
-            Overlay.Kind.D_DEMA_Timeframe-> {
-                allIndicatorInfo[0].label = "Timeframe"
-                kindData = KindData(false,true,Kind.Double_EMA,0)
-            }
-            Kind.D_DEMA_Color ->{
-                allIndicatorInfo[0].label = "Line Color"
-                kindData = KindData(false,true,Kind.Double_EMA,-1,0)
-            }
-
             Overlay.Kind.Ichimoku_Cloud ->{
                 values[0].value = 9.0 //ConversionPeriod
                 values[0].min = 2.0
@@ -1018,26 +997,6 @@ data class Overlay(val context: Context, val kind: Kind){
             Overlay.Kind.D_RAVI_Color ->{
                 allIndicatorInfo[0].label = "Line Color"
                 kindData = KindData(false,true,Kind.RAVI,-1,0)
-            }
-
-            Overlay.Kind.Triple_EMA ->{
-                values[0].value = 9.0
-                values[0].min = 0.5
-                values[0].max = 35.0
-                this.timeFrame = 0
-                allIndicatorInfo[0].label = "Triple EMA"
-                allIndicatorInfo[0].selectedLegendLabel= "Triple EMA"
-                kindData = KindData(true,false,Kind.Triple_EMA,-1,0, true, true)
-                allIndicatorInfo[0].color = sharedPref.getInt(Overlay.Kind.Triple_EMA.toString() + "_COLOR",0)
-                allIndicatorInfo[0].colorDefault = ContextCompat.getColor(context,R.color.md_green_700)
-            }
-            Overlay.Kind.D_TEMA_Timeframe->{
-                allIndicatorInfo[0].label = "Timeframe"
-                kindData = KindData(false,true,Kind.Triple_EMA,0)
-            }
-            Overlay.Kind.D_TEMA_COLOR ->{
-                allIndicatorInfo[0].label = "Line Color"
-                kindData = KindData(false,true,Kind.Triple_EMA,-1,0)
             }
 
             Overlay.Kind.Periodical_Growth_Rate ->{
@@ -1770,14 +1729,6 @@ data class Overlay(val context: Context, val kind: Kind){
         Zero_Lag_Moving_Average,
         D_ZLEMA_TimeFrame,
         D_ZLEMA_COLOR,
-
-        Double_EMA,
-        D_DEMA_Timeframe,
-        D_DEMA_Color,
-
-        Triple_EMA,
-        D_TEMA_Timeframe,
-        D_TEMA_COLOR,
 
         Notifications,
 
