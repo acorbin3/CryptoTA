@@ -6,6 +6,9 @@ This project was used to learn Kotlin and more about creating Andorid apps when 
 # Youtube videos of development
 This project was also live streamed and the playlist can be found here: https://youtube.com/playlist?list=PLwnR6Orp5zUFHsgZUApGEqADjtzoXFfyo
 
+# Playstore link
+https://play.google.com/store/apps/details?id=com.backflippedstudios.crypto_ta&hl=en_US&gl=US
+
 # Resources
 This project leveraged [MPAndroidChart](https://github.com/PhilJay/MPAndroidChart) for charting and [ta4j](https://github.com/ta4j/ta4j) with modifications to support other Tecnical analysis 
 That source data comes from https://cryptowat.ch/
