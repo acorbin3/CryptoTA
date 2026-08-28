@@ -274,6 +274,7 @@ class TechnicalAnalysis {
                         OverlayAdapter.getTimeframeSlow(Kaufman_Adaptive_MA).toInt())
                 Exponential_MA_Ribbon -> updateEMARibbon()
                 Average_Directional_Index -> updateAvgDirectionalMovement(OverlayAdapter.getTimeframe(overlayKind).toInt())
+                else -> {}
             }
 
             //Add extra padding for seperate charts when IchCloud is on

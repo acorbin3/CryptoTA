@@ -3,7 +3,7 @@ package com.backflippedstudios.crypto_ta.customchartmods
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import com.backflippedstudios.crypto_ta.Overlay
 import com.backflippedstudios.crypto_ta.R
 import com.backflippedstudios.crypto_ta.TechnicalAnalysis

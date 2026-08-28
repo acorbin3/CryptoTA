@@ -1,8 +1,8 @@
 package com.backflippedstudios.crypto_ta.recyclerviews
 
 import android.content.Context
-import android.support.v4.content.ContextCompat
-import android.support.v7.widget.RecyclerView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -51,7 +51,7 @@ class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): 
         p0.tv_volume.text = "$" + numFormat.format(firstItem?.quote?.usd?.volume24h).toString()+"(24hV)"
 
         Picasso.get()
-                .load("https://chasing-coins.com/api/v1/std/logo/"+firstItem?.symbol)
+                .load(firstItem?.imageUrl)
                 .placeholder(android.R.drawable.ic_menu_help)
                 .error(android.R.drawable.ic_menu_help)
                 .resize(100,100)

@@ -19,14 +19,14 @@ import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Environment
 import android.os.StrictMode
-import android.support.design.widget.Snackbar
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.Fragment
-import android.support.v4.content.ContextCompat
-import android.support.v4.content.FileProvider
-import android.support.v7.widget.DividerItemDecoration
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.Fragment
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -45,15 +45,9 @@ import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
 import com.backflippedstudios.crypto_ta.dropdownmenus.SimpleArrowDropdownAdapter
 import com.backflippedstudios.crypto_ta.recyclerviews.ChartListAdapter
 import com.github.mikephil.charting.charts.CombinedChart
-import com.google.android.gms.tasks.Task
-import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.firestore.QuerySnapshot
-import kotlinx.android.synthetic.main.detail_analysis_main_layout.*
-import kotlinx.android.synthetic.main.detail_analysis_main_layout.view.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.rm3l.maoni.Maoni
 import org.ta4j.core.Tick
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.format.DateTimeFormatter
@@ -115,7 +109,6 @@ class DetailedAnalysisFrag : Fragment() {
         var displayWidth: Int = 0
         var lastMainTouchChart: Overlay.Kind? = null
         var uuid: String = ""
-        lateinit var mFirebaseAnalytics: FirebaseAnalytics
         val systemUIVisibilityPermissions = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_IMMERSIVE
 //                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -126,16 +119,17 @@ class DetailedAnalysisFrag : Fragment() {
                 )
         var currentCoinRatio: Float = 0.0F
         var currentUSDValue: Float = 0.0F
+        var priceTimer: Timer? = null
 
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration?) {
+    override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
 
-        if (data.lastOrientation != newConfig?.orientation) {
+        if (data.lastOrientation != newConfig.orientation) {
             data.runningOrientationLoad = true
         }
-        data.lastOrientation = newConfig?.orientation!!
+        data.lastOrientation = newConfig.orientation
 
     }
 
@@ -173,11 +167,11 @@ class DetailedAnalysisFrag : Fragment() {
         //Get last selected pre-sets
         data.prefs = activity?.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
         data.saved_time_period = data.prefs!!.getInt(TIME_PERIOD, 0)
-        data.currencySelected = data.prefs!!.getString(CURRENCY_SELECTED, "USD")
-        data.coinSelected = data.prefs!!.getString(COIN_SELECTED, "ETH")
-        data.exchangeSelected = data.prefs!!.getString(EXCHANGE_SELETED, "Gdax")
+        data.currencySelected = data.prefs!!.getString(CURRENCY_SELECTED, "USD")!!
+        data.coinSelected = data.prefs!!.getString(COIN_SELECTED, "ETH")!!
+        data.exchangeSelected = data.prefs!!.getString(EXCHANGE_SELETED, "CoinGecko")!!
 
-        data.uuid = data.prefs!!.getString(USER_UUID, UUID.randomUUID().toString())
+        data.uuid = data.prefs!!.getString(USER_UUID, UUID.randomUUID().toString())!!
         mainView?.b_drawer?.setImageResource(R.drawable.menu_red)
         mainView?.b_collapse_arrow?.alpha = 0F
         data.ivDrawer = mainView?.b_drawer!!
@@ -194,16 +188,14 @@ class DetailedAnalysisFrag : Fragment() {
         mainView?.iv_feedback?.setOnClickListener {
             val bundle = Bundle()
             bundle.putString("uuid", data.uuid)
-            data.mFirebaseAnalytics.logEvent("FeebackSelected", bundle)
-            var mMaoniBuilder = Maoni.Builder(activity,"${BuildConfig.APPLICATION_ID}.fileprovider")
-                    .withSharedPreferences("${activity?.packageName}_preferences")
-            var mMaoni = mMaoniBuilder.withScreenCapturingFeature(true)
-                    .withDefaultToEmailAddress("acorbin3@gmail.com")
-                    .withLogsCapturingFeature(true)
-                    .build()
-            mMaoni.start(activity)
-
-
+            Analytics.logEvent("FeebackSelected", bundle)
+            val emailIntent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:acorbin3@gmail.com"))
+            emailIntent.putExtra(Intent.EXTRA_SUBJECT, "CryptoTA Feedback (v${BuildConfig.VERSION_NAME})")
+            try {
+                startActivity(Intent.createChooser(emailIntent, "Send feedback"))
+            } catch (e: Exception) {
+                Snackbar.make(layout, "No email app found", Snackbar.LENGTH_SHORT).show()
+            }
         }
 
         mainView?.swipe_to_refresh_market_cap?.isRefreshing = true
@@ -336,7 +328,7 @@ class DetailedAnalysisFrag : Fragment() {
                     bundle.putString("uuid", data.uuid)
                     bundle.putString("base_coin", selectedCoin)
                     bundle.putString("currency", selectedCurrency)
-                    data.mFirebaseAnalytics.logEvent("changing_coin", bundle)
+                    Analytics.logEvent("changing_coin", bundle)
 
                     if (data.coinSelected != selectedCoin || data.currencySelected != selectedCurrency) {
 
@@ -386,7 +378,7 @@ class DetailedAnalysisFrag : Fragment() {
                     val bundle = Bundle()
                     bundle.putString("uuid", data.uuid)
                     bundle.putString("select_exchange", row.toString())
-                    data.mFirebaseAnalytics.logEvent("changing_exchange", bundle)
+                    Analytics.logEvent("changing_exchange", bundle)
                     println("Changing exchange to ${row.toString()} from ${data.exchangeSelected}")
                     if (data.exchangeSelected != row.toString()) {
 
@@ -438,8 +430,11 @@ class DetailedAnalysisFrag : Fragment() {
                         data.currencySelected).toString()
             }
 
-            //Create task to update every 5 seconds
+            //Create task to periodically refresh the live price. CoinGecko's free
+            //tier is rate limited, so poll gently and never stack timers.
+            data.priceTimer?.cancel()
             val timer = Timer()
+            data.priceTimer = timer
             timer.schedule(object : TimerTask() {
                 override fun run() {
                     try {
@@ -487,7 +482,7 @@ class DetailedAnalysisFrag : Fragment() {
                                 diff.replace(",", ".")
                                 diff = "%.4f".format(diff.toFloat())
                                 if (!data.currencySelected.contains("USD")) {
-                                    tv_usd_value.text = data.coinSelected + "/USD $" + newUSDPrice.toString() +
+                                    mainView?.tv_usd_value?.text = data.coinSelected + "/USD $" + newUSDPrice.toString() +
                                             "(" + diff + ")"
                                 } else {
                                     //Case for when we are already looking at BTC to USD, no need to do conversion
@@ -503,7 +498,7 @@ class DetailedAnalysisFrag : Fragment() {
                     } catch (e: Exception) {
                     }
                 }
-            }, 0, 5000) //it executes this every 5000ms
+            }, 0, 20000) //refresh the live price every 20s
 
             //Add list for Overlay Adapter
             val list = ArrayList<Overlay>()
@@ -555,7 +550,7 @@ class DetailedAnalysisFrag : Fragment() {
         (mainView?.all_charts_recycler_view?.adapter as ChartListAdapter).notifyDataSetChanged()
         //                all_charts_recycler_view.addItemDecoration(RecyclerViewMargin(activity))
         mainView?.all_charts_recycler_view?.setOnClickListener {
-            if (indicators_recycler_view.visibility == View.VISIBLE) {
+            if (mainView?.indicators_recycler_view?.visibility == View.VISIBLE) {
                 hideIndicatorsList()
             }
         }
@@ -670,7 +665,7 @@ class DetailedAnalysisFrag : Fragment() {
         val bundle = Bundle()
         bundle.putString("uuid", data.uuid)
         bundle.putString("CoinPair", data.coinSelected + "/" + data.currencySelected)
-        data.mFirebaseAnalytics.logEvent("SavingScreenshot", bundle)
+        Analytics.logEvent("SavingScreenshot", bundle)
         var bitmap = screenShot(it.rootView)
 //        println("Before Bitmap size: h ${bitmap.height} w ${bitmap.width}")
 
@@ -709,7 +704,7 @@ class DetailedAnalysisFrag : Fragment() {
     }
 
     private fun saveBitmap(bitmap: Bitmap, fileName: String): File {
-        val path: String = Environment.getExternalStorageDirectory().absolutePath
+        val path: String = activity?.getExternalFilesDir(null)?.absolutePath ?: activity?.filesDir!!.absolutePath
         val dir = File(path)
         if (!dir.exists()) {
             dir.mkdirs()
@@ -740,6 +735,11 @@ class DetailedAnalysisFrag : Fragment() {
     }
 
     private fun requestWritePermission() {
+        // API 29+ writes to app-specific storage, which needs no permission.
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            requestImageResize()
+            return
+        }
         // Permission has not been granted and must be requested.
 
         if (ActivityCompat.checkSelfPermission(activity?.applicationContext!!,
@@ -878,7 +878,7 @@ class DetailedAnalysisFrag : Fragment() {
                 .setDuration(500)
                 .setInterpolator(OvershootInterpolator())
                 .setListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator?) {
+                    override fun onAnimationEnd(animation: Animator) {
                         super.onAnimationEnd(animation)
                         data.rvIndicatorsOverlays.visibility = View.VISIBLE
                     }
@@ -908,7 +908,7 @@ class DetailedAnalysisFrag : Fragment() {
                 .setDuration(500)
                 .setInterpolator(OvershootInterpolator())
                 .setListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator?) {
+                    override fun onAnimationEnd(animation: Animator) {
                         super.onAnimationEnd(animation)
                         data.rvIndicatorsOverlays.visibility = View.GONE
                     }
@@ -1135,16 +1135,9 @@ class DetailedAnalysisFrag : Fragment() {
                 activity?.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         // Check for network connections
-        if (connec.activeNetworkInfo != null && (
-                        connec.activeNetworkInfo.state == android.net.NetworkInfo.State.CONNECTED ||
-                                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.CONNECTING)) {
-            return true
-
-        } else if (connec.activeNetworkInfo != null &&
-                connec.activeNetworkInfo.state == android.net.NetworkInfo.State.DISCONNECTED) {
-            return false
-        }
-        return false
+        val state = connec.activeNetworkInfo?.state ?: return false
+        return state == android.net.NetworkInfo.State.CONNECTED ||
+                state == android.net.NetworkInfo.State.CONNECTING
     }
 
 }

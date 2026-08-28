@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.os.AsyncTask
 import android.os.Bundle
-import android.support.v7.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -18,8 +18,9 @@ import com.backflippedstudios.crypto_ta.customchartmods.ChartStatusData
 import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.backflippedstudios.crypto_ta.recyclerviews.ChartListAdapter
 import com.github.mikephil.charting.charts.CombinedChart
-import com.google.firebase.messaging.FirebaseMessaging
-import com.skydoves.colorpickerpreference.ColorPickerDialog
+import com.skydoves.colorpickerview.ColorPickerDialog
+import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
+import com.skydoves.colorpickerview.preference.ColorPickerPreferenceManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -289,7 +290,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                 val editor = DetailedAnalysisFrag.data.prefs!!.edit()
                 editor.putBoolean(item.kind.name, true)
                 editor.apply()
-                FirebaseMessaging.getInstance().subscribeToTopic("notifications")
+                Analytics.subscribeToTopic("notifications")
             } else {
                 item.selected = DetailedAnalysisFrag.data.prefs?.getBoolean(item.kind.name, false)!!
             }
@@ -511,13 +512,13 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                             } else {
                                 bundle.putString("switching_on_off", "Off")
                             }
-                            DetailedAnalysisFrag.data.mFirebaseAnalytics.logEvent("changing_overlay", bundle)
+                            com.backflippedstudios.crypto_ta.Analytics.logEvent("changing_overlay", bundle)
 
                             if (data.list[getPosition].kind == Overlay.Kind.Notifications) {
                                 if (isChecked) {
-                                    FirebaseMessaging.getInstance().subscribeToTopic("notifications")
+                                    Analytics.subscribeToTopic("notifications")
                                 } else {
-                                    FirebaseMessaging.getInstance().unsubscribeFromTopic("notifications")
+                                    Analytics.unsubscribeFromTopic("notifications")
                                 }
 
                             } else {
@@ -678,12 +679,11 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                 val pos = vh.colorPicker.tag as Int
                                 val builder = ColorPickerDialog.Builder(lContext, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
                                 builder.setTitle("ColorPicker Dialog")
-                                builder.setFlagView(CustomFlag(lContext, R.layout.layout_flag))
                                 //Check to see if pref exist, if it doesnt set the default value to the color from the Overlay Defaults
                                 builder.setPreferenceName(data.list[pos].kind.toString())
-//                                builder.colorPickerView.setSavedColor(Color.RED)
+                                builder.colorPickerView.flagView = CustomFlag(lContext, R.layout.layout_flag)
 
-                                builder.setPositiveButton("Ok") { colorEnvelope ->
+                                builder.setPositiveButton("Ok", ColorEnvelopeListener { colorEnvelope, _ ->
                                     setColor(pos, colorEnvelope.color)
 
                                     if (!data.all[data.list[pos].kindData.parentKind]?.separateChart!!) {
@@ -696,8 +696,8 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                         DetailedAnalysisFrag.data.rvCharts.adapter?.notifyDataSetChanged()
                                         DetailedAnalysisFrag.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(pos)
                                     }
-                                    builder.colorPickerView.saveData()
-                                }
+                                    ColorPickerPreferenceManager.getInstance(lContext).saveColorPickerData(builder.colorPickerView)
+                                })
 
                                 builder.setNegativeButton("Cancel", DialogInterface.OnClickListener { dialogInterface, i -> dialogInterface.dismiss() })
 
@@ -705,7 +705,8 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                     val pos = vh.colorPicker.tag as Int
                                     val defaultColor = getDefaultColor(pos)
                                     setColor(pos, defaultColor)
-                                    builder.colorPickerView.setSavedColor(defaultColor)
+                                    ColorPickerPreferenceManager.getInstance(lContext)
+                                            .setColor(data.list[pos].kind.toString(), defaultColor)
                                     if (!data.all[data.list[pos].kindData.parentKind]?.separateChart!!) {
                                         updateChartStatus(ChartStatusData.Status.UPDATE_OVERLAYS, ChartStatusData.Type.MAIN_CHART)
                                     } else {
@@ -717,7 +718,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
                                         DetailedAnalysisFrag.data.rvIndicatorsOverlays.adapter?.notifyItemChanged(pos)
                                     }
                                 }
-                                val alertDialog: AlertDialog = builder.create()
+                                val alertDialog = builder.create()
                                 alertDialog.show()
                             }
                             break
@@ -788,7 +789,7 @@ class OverlayAdapter(context: Context, private val overlayList: ArrayList<Overla
             if (data.list[i].kind == data.list[pos].kindData.parentKind
                     && data.list[pos].kindData.colorIndex >= 0) {
                 data.list[i].allIndicatorInfo[data.list[pos].kindData.colorIndex].color = color
-                data.all[data.list[i].kind]?.allIndicatorInfo?.get(data.list[pos]?.kindData.colorIndex)?.color = color
+                data.all[data.list[i].kind]?.allIndicatorInfo?.get(data.list[pos].kindData.colorIndex)?.color = color
                 edit.putInt(data.list[pos].kind.toString() + "_COLOR", color)
                 edit.apply()
                 break

@@ -1,7 +1,7 @@
 package com.backflippedstudios.crypto_ta
 
 import android.content.Context
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import org.ta4j.core.indicators.pivotpoints.TimeLevel
 
 data class Overlay(val context: Context, val kind: Kind){

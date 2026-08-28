@@ -42,6 +42,9 @@ class Datum : Serializable {
     @SerializedName("quote")
     @Expose
     var quote: Quote? = null
+    @SerializedName("image")
+    @Expose
+    var imageUrl: String? = null
 
     companion object {
         private const val serialVersionUID = 991796161238960817L
