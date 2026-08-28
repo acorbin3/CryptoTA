@@ -9,22 +9,44 @@ if (hasGoogleServices) {
     apply plugin: 'com.google.firebase.crashlytics'
 }
 
+// Upload-key signing for the new Play listing. keystore.properties is gitignored;
+// without it release builds are simply unsigned (debug builds are unaffected).
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
 android {
     namespace 'com.backflippedstudios.crypto_ta'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.backflippedstudios.crypto_ta"
+        // New applicationId for the fresh Play Store listing (original key is lost)
+        applicationId "com.backflippedstudios.cryptota"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 41
+        versionCode 1
         versionName "3.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     compileOptions {

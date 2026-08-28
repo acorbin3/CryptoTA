@@ -164,6 +164,16 @@ class DetailedAnalysisFrag : Fragment() {
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
 
         layout = mainView!!.findViewById(R.id.main_frame_layout)
+
+        // targetSdk 35 forces edge-to-edge: keep the chart full-bleed but lift the
+        // bottom control bar above the gesture-nav bar and curved screen corners.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(mainView!!) { _, windowInsets ->
+            val bars = windowInsets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                            or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+            mainView?.findViewById<View>(R.id.menu_header_view)?.setPadding(0, 0, 0, bars.bottom)
+            windowInsets
+        }
         //Get last selected pre-sets
         data.prefs = activity?.getSharedPreferences(PREFS_FILENAME, Context.MODE_PRIVATE)
         data.saved_time_period = data.prefs!!.getInt(TIME_PERIOD, 0)

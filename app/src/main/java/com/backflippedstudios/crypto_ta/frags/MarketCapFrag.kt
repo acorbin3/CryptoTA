@@ -22,6 +22,16 @@ class MarketCapFrag : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         mainView = inflater.inflate(R.layout.market_overview_main_layout, container, false)
 
+        // Edge-to-edge: let the last card scroll clear of the gesture-nav bar
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(mainView!!) { _, windowInsets ->
+            val bars = windowInsets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            mainView?.rv_market_overview?.apply {
+                clipToPadding = false
+                setPadding(0, 0, 0, bars.bottom)
+            }
+            windowInsets
+        }
+
         marketData = com.backflippedstudios.crypto_ta.data.DataSource.data.marketCapList
 
         adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data)
