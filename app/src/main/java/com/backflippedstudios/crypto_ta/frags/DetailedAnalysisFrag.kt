@@ -46,7 +46,12 @@ import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
 import com.backflippedstudios.crypto_ta.dropdownmenus.SimpleArrowDropdownAdapter
 import com.backflippedstudios.crypto_ta.recyclerviews.ChartListAdapter
 import com.github.mikephil.charting.charts.CombinedChart
-import com.github.mikephil.charting.components.LimitLine
+import com.github.mikephil.charting.charts.ScatterChart
+import com.github.mikephil.charting.data.CombinedData
+import com.github.mikephil.charting.data.Entry as ChartEntry
+import com.github.mikephil.charting.data.ScatterData
+import com.github.mikephil.charting.data.ScatterDataSet
+import com.github.mikephil.charting.interfaces.datasets.IScatterDataSet
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.ta4j.core.Tick
@@ -1099,40 +1104,36 @@ class DetailedAnalysisFrag : Fragment() {
 
     // ---- Strategy backtesting (ta4j strategy engine) ----
 
-    private val backtestLimitLines = ArrayList<LimitLine>()
-
+    // Runs every preset against the current chart and shows a ranked scoreboard
     private fun showBacktestDialog() {
-        val ctx = activity ?: return
-        val labels = Backtester.presets.map { "${it.name}\n${it.description}" }.toTypedArray()
-        AlertDialog.Builder(ctx, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
-                .setTitle("Backtest a strategy on ${data.coinSelected}/${data.currencySelected}")
-                .setItems(labels) { _, which -> runBacktest(Backtester.presets[which]) }
-                .setNegativeButton("Clear markers") { _, _ -> clearTradeMarkers() }
-                .show()
-    }
-
-    private fun runBacktest(preset: Backtester.Preset) {
         val lifecycle = view?.let { viewLifecycleOwner.lifecycleScope } ?: return
         lifecycle.launch {
             val ticks = if (data.lastTicks.isNotEmpty()) data.lastTicks
             else CryptoRepository.getCandles(data.coinSelected, data.exchangeSelected,
                     data.currencySelected, DataSource.Interval.values()[data.saved_time_period])
 
-            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                try {
-                    Backtester.run(ticks, preset)
-                } catch (e: Exception) {
-                    println("Backtest failed: ${e.message}")
-                    null
-                }
+            val results = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                Backtester.runAll(ticks)
             }
             val ctx = activity ?: return@launch
-            if (result == null) {
+            if (results.isEmpty()) {
                 android.widget.Toast.makeText(ctx,
                         "Not enough chart data to backtest", android.widget.Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            showBacktestResult(result)
+
+            val buyHold = results[0].buyHoldPercent
+            val labels = results.mapIndexed { i, r ->
+                val trophy = if (i == 0 && r.profitPercent > 0) "🏆 " else ""
+                "$trophy${r.presetName}   ${"%+.2f%%".format(r.profitPercent)}  (${r.tradeCount} trades)"
+            }.toTypedArray()
+
+            AlertDialog.Builder(ctx, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                    .setTitle("${data.coinSelected}/${data.currencySelected} on this chart — " +
+                            "buy & hold ${"%+.2f%%".format(buyHold)}. Tap a strategy for details:")
+                    .setItems(labels) { _, which -> showBacktestResult(results[which]) }
+                    .setNegativeButton("Clear chart markers") { _, _ -> clearTradeMarkers() }
+                    .show()
         }
     }
 
@@ -1161,36 +1162,65 @@ class DetailedAnalysisFrag : Fragment() {
     private fun mainChart(): CombinedChart? =
             ChartListAdapter.data.charts[Overlay.Kind.None] as? CombinedChart
 
+    // Draws green chevron-up markers under buys and red chevron-down markers
+    // above sells, at the actual candle prices
     private fun applyTradeMarkers(result: Backtester.Result) {
         val chart = mainChart() ?: return
-        clearTradeMarkers()
-        val green = ContextCompat.getColor(activity?.applicationContext ?: return, R.color.md_green_500)
-        val red = ContextCompat.getColor(activity?.applicationContext ?: return, R.color.md_red_500)
-        for ((entry, exit) in result.trades) {
-            val buyLine = LimitLine(entry.toFloat(), "B")
-            buyLine.lineColor = green
-            buyLine.textColor = green
-            buyLine.lineWidth = 1f
-            backtestLimitLines.add(buyLine)
-            chart.xAxis.addLimitLine(buyLine)
-            if (exit != null) {
-                val sellLine = LimitLine(exit.toFloat(), "S")
-                sellLine.lineColor = red
-                sellLine.textColor = red
-                sellLine.lineWidth = 1f
-                backtestLimitLines.add(sellLine)
-                chart.xAxis.addLimitLine(sellLine)
+        val combined = chart.data as? CombinedData ?: return
+        val ticks = data.lastTicks
+        if (ticks.isEmpty()) return
+        val ctx = activity?.applicationContext ?: return
+
+        val buys = ArrayList<ChartEntry>()
+        val sells = ArrayList<ChartEntry>()
+        for ((entryIdx, exitIdx) in result.trades) {
+            if (entryIdx < ticks.size) {
+                val low = ticks[entryIdx].minPrice.toDouble()
+                buys.add(ChartEntry(entryIdx.toFloat(), (low * 0.9985).toFloat()))
+            }
+            if (exitIdx != null && exitIdx < ticks.size) {
+                val high = ticks[exitIdx].maxPrice.toDouble()
+                sells.add(ChartEntry(exitIdx.toFloat(), (high * 1.0015).toFloat()))
             }
         }
-        chart.invalidate()
+
+        val sets = ArrayList<IScatterDataSet>()
+        if (buys.isNotEmpty()) {
+            val buySet = ScatterDataSet(buys, "Buy")
+            buySet.setScatterShape(ScatterChart.ScatterShape.CHEVRON_UP)
+            buySet.color = ContextCompat.getColor(ctx, R.color.md_green_500)
+            buySet.scatterShapeSize = 40f
+            buySet.setDrawValues(false)
+            sets.add(buySet)
+        }
+        if (sells.isNotEmpty()) {
+            val sellSet = ScatterDataSet(sells, "Sell")
+            sellSet.setScatterShape(ScatterChart.ScatterShape.CHEVRON_DOWN)
+            sellSet.color = ContextCompat.getColor(ctx, R.color.md_red_500)
+            sellSet.scatterShapeSize = 40f
+            sellSet.setDrawValues(false)
+            sets.add(sellSet)
+        }
+        if (sets.isEmpty()) return
+
+        combined.setData(ScatterData(sets))
+        refreshCombinedRenderers(chart)
     }
 
     private fun clearTradeMarkers() {
         val chart = mainChart() ?: return
-        for (line in backtestLimitLines) {
-            chart.xAxis.removeLimitLine(line)
-        }
-        backtestLimitLines.clear()
+        val combined = chart.data as? CombinedData ?: return
+        combined.setData(ScatterData())
+        refreshCombinedRenderers(chart)
+    }
+
+    // A CombinedChart only creates sub-renderers when data is set on the chart
+    // itself; after mutating CombinedData the scatter renderer must be rebuilt
+    // or the markers silently don't draw
+    private fun refreshCombinedRenderers(chart: CombinedChart) {
+        (chart.renderer as? com.github.mikephil.charting.renderer.CombinedChartRenderer)
+                ?.createRenderers()
+        chart.notifyDataSetChanged()
         chart.invalidate()
     }
 

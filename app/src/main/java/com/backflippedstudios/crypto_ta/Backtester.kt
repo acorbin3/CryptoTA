@@ -106,6 +106,19 @@ object Backtester {
         val beatBuyHold: Boolean get() = profitPercent > buyHoldPercent
     }
 
+    /** Runs every preset and returns results ranked best-profit-first. */
+    fun runAll(ticks: List<Tick>): List<Result> {
+        val results = ArrayList<Result>()
+        for (preset in presets) {
+            try {
+                run(ticks, preset)?.let { results.add(it) }
+            } catch (e: Exception) {
+                println("Backtest '${preset.name}' failed: ${e.message}")
+            }
+        }
+        return results.sortedByDescending { it.profitPercent }
+    }
+
     fun run(ticks: List<Tick>, preset: Preset): Result? {
         if (ticks.size < 30) return null
         val series: TimeSeries = BaseTimeSeries(ArrayList(ticks))

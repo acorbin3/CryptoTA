@@ -136,6 +136,8 @@ public class BaseStrategy implements Strategy {
 
         if (isUnstableAt(index)) {
             exit =  false;
+        } else {
+            exit = getExitRule().isSatisfied(index, tradingRecord);
         }
 
         traceShouldExit(index, exit);
