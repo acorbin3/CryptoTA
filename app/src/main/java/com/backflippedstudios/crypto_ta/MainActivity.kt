@@ -26,6 +26,19 @@ class MainActivity : AppCompatActivity() {
         Analytics.init(applicationContext)
         DataSource.appContext = applicationContext
 
+        // Background check for saved price alerts (~15 min, the WorkManager minimum)
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "price_alerts",
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                androidx.work.PeriodicWorkRequestBuilder<com.backflippedstudios.crypto_ta.data.PriceAlertWorker>(
+                        15, java.util.concurrent.TimeUnit.MINUTES).build())
+        // Also check immediately on launch so alerts never feel stale
+        if (com.backflippedstudios.crypto_ta.data.PriceAlertStore.load(applicationContext).isNotEmpty()) {
+            androidx.work.WorkManager.getInstance(applicationContext).enqueue(
+                    androidx.work.OneTimeWorkRequestBuilder<com.backflippedstudios.crypto_ta.data.PriceAlertWorker>()
+                            .build())
+        }
+
         //Init viewPager
         val adapter = ViewPagerAdapter(supportFragmentManager)
 

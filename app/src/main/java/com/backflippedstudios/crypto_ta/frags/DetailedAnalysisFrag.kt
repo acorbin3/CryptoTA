@@ -80,7 +80,7 @@ class DetailedAnalysisFrag : Fragment() {
     private val regressionTesting = false
 
     var mainView: View? = null
-    val title = "Detail Analsis"
+    val title = "Detail Analysis"
     private var coinPairItems: ArrayList<String> = ArrayList()
 
 

@@ -22,7 +22,8 @@ import java.util.ArrayList
 class MarketCapCardsAdapter(
         var context: Context,
         val mCardList: List<Datum>?,
-        val onCoinClick: ((String) -> Unit)? = null
+        val onCoinClick: ((String) -> Unit)? = null,
+        val onCoinLongPress: ((Datum) -> Unit)? = null
 ) : RecyclerView.Adapter<MarketCapCardsAdapter.CardsViewHolder>() {
 
     object data{
@@ -57,6 +58,10 @@ class MarketCapCardsAdapter(
 
         p0.itemView.setOnClickListener {
             firstItem?.symbol?.let { s -> onCoinClick?.invoke(s) }
+        }
+        p0.itemView.setOnLongClickListener {
+            firstItem?.let { d -> onCoinLongPress?.invoke(d) }
+            true
         }
         val isFav = favorites().contains(firstItem?.symbol)
         p0.iv_favorite.setImageResource(
