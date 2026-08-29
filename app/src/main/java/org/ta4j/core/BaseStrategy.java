@@ -148,7 +148,7 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        log.fine(MessageFormat.format(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), index, enter));
+        log.fine(MessageFormat.format(">>> {0}#shouldEnter({1}): {2}", getClass().getSimpleName(), index, enter));
     }
 
     /**
@@ -157,6 +157,6 @@ public class BaseStrategy implements Strategy {
      * @param exit true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        log.fine(MessageFormat.format(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), index, exit));
+        log.fine(MessageFormat.format(">>> {0}#shouldExit({1}): {2}", getClass().getSimpleName(), index, exit));
     }
 }

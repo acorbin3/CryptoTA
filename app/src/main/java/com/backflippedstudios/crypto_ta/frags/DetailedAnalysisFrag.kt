@@ -46,6 +46,7 @@ import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
 import com.backflippedstudios.crypto_ta.dropdownmenus.SimpleArrowDropdownAdapter
 import com.backflippedstudios.crypto_ta.recyclerviews.ChartListAdapter
 import com.github.mikephil.charting.charts.CombinedChart
+import com.github.mikephil.charting.components.LimitLine
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.ta4j.core.Tick
@@ -120,6 +121,8 @@ class DetailedAnalysisFrag : Fragment() {
         var currentCoinRatio: Float = 0.0F
         var currentUSDValue: Float = 0.0F
         var priceTimer: Timer? = null
+        // Candles currently shown on the main chart, for the backtester
+        var lastTicks: ArrayList<Tick> = ArrayList()
 
     }
 
@@ -190,6 +193,9 @@ class DetailedAnalysisFrag : Fragment() {
                 requestWritePermission()
 
             }
+        }
+        mainView?.iv_backtest?.setOnClickListener {
+            showBacktestDialog()
         }
         mainView?.iv_feedback?.setOnClickListener {
             val bundle = Bundle()
@@ -962,6 +968,7 @@ class DetailedAnalysisFrag : Fragment() {
             com.backflippedstudios.crypto_ta.data.LivePriceFeed.subscribe(
                     "${coin.toUpperCase()}-${currency.toUpperCase()}")
             val ticks = CryptoRepository.getCandles(coin, exchange, currency, interval)
+            data.lastTicks = ticks
             updateDataSourceLabel()
             Log.d("DEBUG", "Finished getting data")
             if (ticks.size < 10) {
@@ -1088,6 +1095,103 @@ class DetailedAnalysisFrag : Fragment() {
             } catch (e: Exception) {
             }
         }
+    }
+
+    // ---- Strategy backtesting (ta4j strategy engine) ----
+
+    private val backtestLimitLines = ArrayList<LimitLine>()
+
+    private fun showBacktestDialog() {
+        val ctx = activity ?: return
+        val labels = Backtester.presets.map { "${it.name}\n${it.description}" }.toTypedArray()
+        AlertDialog.Builder(ctx, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("Backtest a strategy on ${data.coinSelected}/${data.currencySelected}")
+                .setItems(labels) { _, which -> runBacktest(Backtester.presets[which]) }
+                .setNegativeButton("Clear markers") { _, _ -> clearTradeMarkers() }
+                .show()
+    }
+
+    private fun runBacktest(preset: Backtester.Preset) {
+        val lifecycle = view?.let { viewLifecycleOwner.lifecycleScope } ?: return
+        lifecycle.launch {
+            val ticks = if (data.lastTicks.isNotEmpty()) data.lastTicks
+            else CryptoRepository.getCandles(data.coinSelected, data.exchangeSelected,
+                    data.currencySelected, DataSource.Interval.values()[data.saved_time_period])
+
+            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                try {
+                    Backtester.run(ticks, preset)
+                } catch (e: Exception) {
+                    println("Backtest failed: ${e.message}")
+                    null
+                }
+            }
+            val ctx = activity ?: return@launch
+            if (result == null) {
+                android.widget.Toast.makeText(ctx,
+                        "Not enough chart data to backtest", android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            showBacktestResult(result)
+        }
+    }
+
+    private fun showBacktestResult(result: Backtester.Result) {
+        val ctx = activity ?: return
+        val pct = { v: Double -> "%+.2f%%".format(v) }
+        val verdict = if (result.beatBuyHold) "BEAT buy & hold" else "did NOT beat buy & hold"
+        val message = """
+            |Strategy profit: ${pct(result.profitPercent)}
+            |Buy & hold: ${pct(result.buyHoldPercent)}
+            |=> ${result.presetName} $verdict
+            |
+            |Max drawdown: ${"%.2f%%".format(result.maxDrawdownPercent)}
+            |Trades: ${result.tradeCount} (${"%.0f%%".format(result.winRatePercent)} profitable)
+            |
+            |No fees/slippage included. Past performance predicts nothing.
+        """.trimMargin()
+        AlertDialog.Builder(ctx, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle(result.presetName)
+                .setMessage(message)
+                .setPositiveButton("Show trades on chart") { _, _ -> applyTradeMarkers(result) }
+                .setNegativeButton("Close", null)
+                .show()
+    }
+
+    private fun mainChart(): CombinedChart? =
+            ChartListAdapter.data.charts[Overlay.Kind.None] as? CombinedChart
+
+    private fun applyTradeMarkers(result: Backtester.Result) {
+        val chart = mainChart() ?: return
+        clearTradeMarkers()
+        val green = ContextCompat.getColor(activity?.applicationContext ?: return, R.color.md_green_500)
+        val red = ContextCompat.getColor(activity?.applicationContext ?: return, R.color.md_red_500)
+        for ((entry, exit) in result.trades) {
+            val buyLine = LimitLine(entry.toFloat(), "B")
+            buyLine.lineColor = green
+            buyLine.textColor = green
+            buyLine.lineWidth = 1f
+            backtestLimitLines.add(buyLine)
+            chart.xAxis.addLimitLine(buyLine)
+            if (exit != null) {
+                val sellLine = LimitLine(exit.toFloat(), "S")
+                sellLine.lineColor = red
+                sellLine.textColor = red
+                sellLine.lineWidth = 1f
+                backtestLimitLines.add(sellLine)
+                chart.xAxis.addLimitLine(sellLine)
+            }
+        }
+        chart.invalidate()
+    }
+
+    private fun clearTradeMarkers() {
+        val chart = mainChart() ?: return
+        for (line in backtestLimitLines) {
+            chart.xAxis.removeLimitLine(line)
+        }
+        backtestLimitLines.clear()
+        chart.invalidate()
     }
 
     private fun showCoinSearchDialog() {
