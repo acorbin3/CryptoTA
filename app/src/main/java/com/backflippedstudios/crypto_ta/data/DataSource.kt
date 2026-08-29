@@ -28,22 +28,24 @@ import kotlin.collections.HashMap
  */
 class DataSource {
 
-    // CoinGecko free-tier OHLC granularity is driven by the "days" window:
-    // 1 day -> 30 min candles, 2-30 days -> 4 h candles, 31+ days -> 4 day candles.
-    enum class Interval(val seconds: Long, val geckoDays: Int) {
-        _1MIN(60, 1),
-        _3MIN(60 * 3, 1),
-        _5MIN(60 * 5, 1),
-        _15MIN(60 * 15, 1),
-        _30MIN(60 * 30, 1),
-        _1HOUR(60 * 60, 7),
-        _2HOUR(60 * 60 * 2, 14),
-        _4HOUR(60 * 60 * 4, 30),
-        _6HOUR(60 * 60 * 6, 30),
-        _12HOUR(60 * 60 * 12, 30),
-        _1DAY(60 * 60 * 24, 180),
-        _3DAY(60 * 60 * 24 * 3, 365),
-        _1WEEK(60 * 60 * 24 * 7, 365)
+    // geckoDays: CoinGecko free-tier OHLC granularity is driven by the "days"
+    // window (1 day -> 30 min candles, 2-30 days -> 4 h, 31+ -> 4 day candles).
+    // cbGranularity: nearest supported Coinbase Exchange candle size in seconds
+    // (60, 300, 900, 3600, 21600, 86400).
+    enum class Interval(val seconds: Long, val geckoDays: Int, val cbGranularity: Int) {
+        _1MIN(60, 1, 60),
+        _3MIN(60 * 3, 1, 300),
+        _5MIN(60 * 5, 1, 300),
+        _15MIN(60 * 15, 1, 900),
+        _30MIN(60 * 30, 1, 900),
+        _1HOUR(60 * 60, 7, 3600),
+        _2HOUR(60 * 60 * 2, 14, 3600),
+        _4HOUR(60 * 60 * 4, 30, 21600),
+        _6HOUR(60 * 60 * 6, 30, 21600),
+        _12HOUR(60 * 60 * 12, 30, 21600),
+        _1DAY(60 * 60 * 24, 180, 86400),
+        _3DAY(60 * 60 * 24 * 3, 365, 86400),
+        _1WEEK(60 * 60 * 24 * 7, 365, 86400)
     }
 
     data class Exchange(
@@ -135,9 +137,13 @@ class DataSource {
         // CoinGecko's free-tier rate limit (~10-30 calls/min).
         private val tickCache = HashMap<String, Pair<Long, ArrayList<Tick>>>()
         private val priceCache = HashMap<String, Pair<Long, HashMap<String, Float>>>()
+        private val cbMissingProducts = java.util.Collections.synchronizedSet(HashSet<String>())
         private const val TICK_CACHE_MS = 60_000L
         private const val PRICE_CACHE_MS = 30_000L
     }
+
+    @Volatile
+    private var lastHttpCode = 0
 
     private fun httpGetJson(urlStr: String): String? {
         for (attempt in 0..1) {
@@ -149,6 +155,7 @@ class DataSource {
                 connection.setRequestProperty("Accept", "application/json")
                 connection.setRequestProperty("User-Agent", "CryptoTA-Android")
                 val code = connection.responseCode
+                lastHttpCode = code
                 if (code == 200) {
                     val body = InputStreamReader(connection.inputStream, "UTF-8").use { it.readText() }
                     connection.disconnect()
@@ -291,8 +298,81 @@ class DataSource {
     }
 
     fun getData(coin: String, exchange: String, currency: String, interval: Interval): ArrayList<Tick> {
+        // Coinbase Exchange first: real per-candle volume, exchange-grade
+        // granularity, and a far friendlier rate limit than CoinGecko's free tier
+        if (currency.toLowerCase() in listOf("usd", "btc", "eur")) {
+            val product = coin.toUpperCase() + "-" + currency.toUpperCase()
+            val cbTicks = getCoinbaseTicks(product, interval)
+            if (cbTicks.size >= 10) {
+                lastCandleSource = "Coinbase"
+                return cbTicks
+            }
+        }
         val geckoId = geckoIdFor(coin) ?: return ArrayList()
-        return getTicks(geckoId, currency.toLowerCase(), interval.geckoDays)
+        val ticks = getTicks(geckoId, currency.toLowerCase(), interval.geckoDays)
+        if (ticks.isNotEmpty()) lastCandleSource = "CoinGecko"
+        return ticks
+    }
+
+    private fun getCoinbaseTicks(product: String, interval: Interval): ArrayList<Tick> {
+        val ticks = ArrayList<Tick>()
+        if (product in cbMissingProducts) return ticks
+
+        val cacheKey = "cb_${product}_${interval.cbGranularity}"
+        synchronized(tickCache) {
+            tickCache[cacheKey]?.let { (time, cached) ->
+                if (System.currentTimeMillis() - time < TICK_CACHE_MS) {
+                    return ArrayList(cached)
+                }
+            }
+        }
+
+        val body = httpGetJsonCached(
+                "https://api.exchange.coinbase.com/products/$product/candles?granularity=${interval.cbGranularity}",
+                cacheKey)
+        if (body == null) {
+            // Unknown product: remember so we don't ask Coinbase again this session
+            if (lastHttpCode == 404) cbMissingProducts.add(product)
+            return ticks
+        }
+
+        val candles: Array<DoubleArray> = try {
+            gson.fromJson(body, Array<DoubleArray>::class.java)
+        } catch (e: Exception) {
+            println("Failed to parse Coinbase candles: ${e.message}")
+            return ticks
+        }
+        // Coinbase returns [time, low, high, open, close, volume], newest first
+        candles.reverse()
+        var lastTick: Tick? = null
+        for (candle in candles) {
+            if (candle.size < 6) continue
+            val z = Instant.ofEpochSecond(candle[0].toLong()).atZone(ZoneId.systemDefault())
+            var open = candle[3]
+            if (lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
+                open = lastTick.closePrice.toDouble()
+            }
+            val currentTick = BaseTick(z,
+                    Decimal.valueOf(open),
+                    Decimal.valueOf(candle[2]),
+                    Decimal.valueOf(candle[1]),
+                    Decimal.valueOf(candle[4]),
+                    Decimal.valueOf(candle[5]))
+            if (currentTick.closePrice.isEqual(Decimal.valueOf(0)) or currentTick.minPrice.isEqual(Decimal.valueOf(0))) {
+                if (lastTick != null) ticks.add(lastTick)
+            } else {
+                ticks.add(currentTick)
+                lastTick = currentTick
+            }
+        }
+        println("Parsed ${ticks.size} Coinbase candles for $product@${interval.cbGranularity}s")
+
+        if (ticks.isNotEmpty()) {
+            synchronized(tickCache) {
+                tickCache[cacheKey] = Pair(System.currentTimeMillis(), ArrayList(ticks))
+            }
+        }
+        return ticks
     }
 
     private fun getTicks(geckoId: String, vsCurrency: String, days: Int): ArrayList<Tick> {

@@ -402,6 +402,16 @@ class DetailedAnalysisFrag : Fragment() {
                         data.currencySelected))
             }
 
+            //Stream live prices over the Coinbase WebSocket feed when the pair
+            //exists there; the polling timer below stays as the fallback.
+            com.backflippedstudios.crypto_ta.data.LivePriceFeed.onPrice = { product, price ->
+                if (product == "${data.coinSelected.toUpperCase()}-${data.currencySelected.toUpperCase()}") {
+                    onStreamedPrice(price)
+                }
+            }
+            com.backflippedstudios.crypto_ta.data.LivePriceFeed.subscribe(
+                    "${data.coinSelected.toUpperCase()}-${data.currencySelected.toUpperCase()}")
+
             //Create task to periodically refresh the live price. CoinGecko's free
             //tier is rate limited, so poll gently and never stack timers.
             data.priceTimer?.cancel()
@@ -409,6 +419,11 @@ class DetailedAnalysisFrag : Fragment() {
             data.priceTimer = timer
             timer.schedule(object : TimerTask() {
                 override fun run() {
+                    // The WebSocket feed already covers both price fields for USD pairs
+                    if (com.backflippedstudios.crypto_ta.data.LivePriceFeed.isStreaming
+                            && data.currencySelected.contains("USD")) {
+                        return
+                    }
                     try {
                         val newPrice = MainActivity.data.dataSource.getCurrentValue(data.coinSelected,
                                 data.exchangeSelected,
@@ -960,7 +975,10 @@ class DetailedAnalysisFrag : Fragment() {
 
             val interval = DataSource.Interval.values()[position]
             println("Getting data from web")
+            com.backflippedstudios.crypto_ta.data.LivePriceFeed.subscribe(
+                    "${coin.toUpperCase()}-${currency.toUpperCase()}")
             val ticks = MainActivity.data.dataSource.getData(coin, exchange, currency, interval)
+            updateDataSourceLabel()
             Log.d("DEBUG", "Finished getting data")
             if (ticks.size < 10) {
                 activity?.runOnUiThread {
@@ -1061,6 +1079,31 @@ class DetailedAnalysisFrag : Fragment() {
             mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
         }
 
+    }
+
+    // Applies a streamed Coinbase tick to the price displays
+    private fun onStreamedPrice(newPrice: Float) {
+        activity?.runOnUiThread {
+            try {
+                val ctx = activity?.applicationContext ?: return@runOnUiThread
+                val oldPrice = data.currentCoinRatio
+                val color = when {
+                    oldPrice < newPrice -> ContextCompat.getColor(ctx, R.color.md_green_500)
+                    oldPrice > newPrice -> ContextCompat.getColor(ctx, R.color.md_red_500)
+                    else -> ContextCompat.getColor(ctx, R.color.md_white_1000)
+                }
+                mainView?.tv_live_price?.setTextColor(color)
+                val diff = "%.6f".format(newPrice - oldPrice)
+                mainView?.tv_live_price?.text = data.coinSelected + "/" + data.currencySelected +
+                        " " + formatPrice(newPrice) + "(" + diff + ")"
+                if (data.currencySelected.contains("USD")) {
+                    mainView?.tv_usd_value?.setTextColor(color)
+                    mainView?.tv_usd_value?.text = mainView?.tv_live_price?.text
+                }
+                data.currentCoinRatio = newPrice
+            } catch (e: Exception) {
+            }
+        }
     }
 
     private fun showCoinSearchDialog() {
