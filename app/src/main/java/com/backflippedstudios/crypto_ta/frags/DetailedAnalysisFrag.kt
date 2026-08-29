@@ -421,23 +421,23 @@ class DetailedAnalysisFrag : Fragment() {
         if (internetOn) {
 
             //Initial value of live price
-            mainView?.tv_live_price?.text = MainActivity.data.dataSource.getCurrentValue(
+            mainView?.tv_live_price?.text = formatPrice(MainActivity.data.dataSource.getCurrentValue(
                     data.coinSelected,
                     data.exchangeSelected,
-                    data.currencySelected).toString()
+                    data.currencySelected))
             //Populate exchange data for BTC so we can look up data for USD conversion
             if (data.coinSelected.toLowerCase() != "btc")
                 MainActivity.data.dataSource.initExchangesForCoin("btc")
             if (!data.currencySelected.toLowerCase().contains("usd")) {
-                mainView?.tv_usd_value?.text = "$" + MainActivity.data.dataSource.getUSDValue(
+                mainView?.tv_usd_value?.text = "$" + formatPrice(MainActivity.data.dataSource.getUSDValue(
                         data.coinSelected,
-                        data.exchangeSelected).toString()
+                        data.exchangeSelected))
             } else {
                 //Case for when we are already looking at BTC to USD, no need to do conversion
-                mainView?.tv_usd_value?.text = "$" + MainActivity.data.dataSource.getCurrentValue(
+                mainView?.tv_usd_value?.text = "$" + formatPrice(MainActivity.data.dataSource.getCurrentValue(
                         data.coinSelected,
                         data.exchangeSelected,
-                        data.currencySelected).toString()
+                        data.currencySelected))
             }
 
             //Create task to periodically refresh the live price. CoinGecko's free
@@ -480,7 +480,7 @@ class DetailedAnalysisFrag : Fragment() {
                                 diff.replace(",", ".")
                                 diff = "%.6f".format(diff.toFloat())
                                 //                                    println("$diff $oldPrice $newPrice")
-                                mainView?.tv_live_price?.text = coinPair + newPrice.toString() +
+                                mainView?.tv_live_price?.text = coinPair + formatPrice(newPrice) +
                                         "(" + (diff) + ")"
 
                                 if (newUSDPrice > 1) {
@@ -492,7 +492,7 @@ class DetailedAnalysisFrag : Fragment() {
                                 diff.replace(",", ".")
                                 diff = "%.4f".format(diff.toFloat())
                                 if (!data.currencySelected.contains("USD")) {
-                                    mainView?.tv_usd_value?.text = data.coinSelected + "/USD $" + newUSDPrice.toString() +
+                                    mainView?.tv_usd_value?.text = data.coinSelected + "/USD $" + formatPrice(newUSDPrice) +
                                             "(" + diff + ")"
                                 } else {
                                     //Case for when we are already looking at BTC to USD, no need to do conversion
@@ -858,11 +858,8 @@ class DetailedAnalysisFrag : Fragment() {
             mainView?.tv_live_price?.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
             mainView?.tv_usd_value?.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
 
-            mainView?.tv_live_price?.text = newPrice.toString()
-            if (newUSDPrice > 1) {
-                newUSDPrice = "%.2f".format(newUSDPrice).toFloat()
-            }
-            mainView?.tv_usd_value?.text = "$" + newUSDPrice.toString()
+            mainView?.tv_live_price?.text = formatPrice(newPrice)
+            mainView?.tv_usd_value?.text = "$" + formatPrice(newUSDPrice)
         } catch (e: Exception) {
 
         }
@@ -1136,6 +1133,18 @@ class DetailedAnalysisFrag : Fragment() {
             mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
         }
 
+    }
+
+    // Comma-grouped price display, e.g. 79,249.00; small-cap coins keep more decimals
+    private fun formatPrice(value: Float): String {
+        val nf = java.text.NumberFormat.getNumberInstance(Locale.US)
+        if (value >= 1f) {
+            nf.minimumFractionDigits = 2
+            nf.maximumFractionDigits = 2
+        } else {
+            nf.maximumFractionDigits = 6
+        }
+        return nf.format(value.toDouble())
     }
 
     private fun isInternetOn(): Boolean {
