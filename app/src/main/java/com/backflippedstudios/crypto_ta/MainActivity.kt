@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_swipable_tabs)
         AndroidThreeTen.init(this)
         Analytics.init(applicationContext)
+        DataSource.appContext = applicationContext
 
         //Init viewPager
         val adapter = ViewPagerAdapter(supportFragmentManager)
@@ -46,6 +47,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadCoins() {
         GlobalScope.launch(Dispatchers.IO) {
+            // Show the last-known data instantly while fresh data loads
+            val cached = data.dataSource.loadCoinsFromCache()
+            if (cached) {
+                println("Loaded coin list from disk cache")
+                runOnUiThread { refreshTabs() }
+            }
+
             // Retry with backoff so a rate-limited cold start recovers on its own
             var loaded = false
             for (attempt in 1..10) {
@@ -58,13 +66,21 @@ class MainActivity : AppCompatActivity() {
                 println("Giving up loading the coin list from CoinGecko")
                 return@launch
             }
-            runOnUiThread {
-                if (tab1Frag.mainView != null) {
-                    tab1Frag.processInit(applicationContext, true)
-                }
-                tab2Frag.processGraphs()
-                println("Finished initial loading")
+            // Skip the second full UI rebuild if the cache already drove one —
+            // the fresh data landed in the same shared structures
+            if (!cached) {
+                runOnUiThread { refreshTabs() }
+            } else {
+                runOnUiThread { tab2Frag.processGraphs() }
             }
+            println("Finished initial loading")
         }
+    }
+
+    private fun refreshTabs() {
+        if (tab1Frag.mainView != null) {
+            tab1Frag.processInit(applicationContext, true)
+        }
+        tab2Frag.processGraphs()
     }
 }

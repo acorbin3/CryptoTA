@@ -19,22 +19,56 @@ import com.squareup.picasso.Picasso
 import java.text.NumberFormat
 import java.util.ArrayList
 
-class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): RecyclerView.Adapter<MarketCapCardsAdapter.CardsViewHolder>(){
+class MarketCapCardsAdapter(
+        var context: Context,
+        val mCardList: List<Datum>?,
+        val onCoinClick: ((String) -> Unit)? = null
+) : RecyclerView.Adapter<MarketCapCardsAdapter.CardsViewHolder>() {
 
     object data{
         var coinLineData: HashMap<String, ArrayList<ILineDataSet>> = HashMap()
     }
+
+    private val prefs = context.getSharedPreferences("com.backflippedstudios.saved.prefs", Context.MODE_PRIVATE)
+    private var displayList: List<Datum> = sortWithFavorites()
+
+    private fun favorites(): MutableSet<String> =
+            HashSet(prefs.getStringSet("favorite_coins", emptySet()) ?: emptySet())
+
+    // Favorites pinned to the top (in market-cap order), everything else after
+    private fun sortWithFavorites(): List<Datum> {
+        val favs = favorites()
+        return (mCardList ?: emptyList()).sortedWith(
+                compareByDescending<Datum> { favs.contains(it.symbol) }
+                        .thenBy { it.id ?: Int.MAX_VALUE })
+    }
+
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): CardsViewHolder {
         val view = LayoutInflater.from(p0.context).inflate(R.layout.market_cap_item,p0, false)
         return CardsViewHolder(view)
     }
 
     override fun getItemCount(): Int {
-        return mCardList?.size ?: 0
+        return displayList.size
     }
 
     override fun onBindViewHolder(p0: CardsViewHolder, p1: Int) {
-        val firstItem = mCardList?.get(p1)
+        val firstItem = displayList.getOrNull(p1)
+
+        p0.itemView.setOnClickListener {
+            firstItem?.symbol?.let { s -> onCoinClick?.invoke(s) }
+        }
+        val isFav = favorites().contains(firstItem?.symbol)
+        p0.iv_favorite.setImageResource(
+                if (isFav) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off)
+        p0.iv_favorite.setOnClickListener {
+            val symbol = firstItem?.symbol ?: return@setOnClickListener
+            val favs = favorites()
+            if (!favs.add(symbol)) favs.remove(symbol)
+            prefs.edit().putStringSet("favorite_coins", favs).apply()
+            displayList = sortWithFavorites()
+            notifyDataSetChanged()
+        }
         p0.tv_coinName.text = firstItem?.name
         val numFormat = NumberFormat.getNumberInstance()
         p0.tv_marketcap.text = "$" + numFormat.format(firstItem?.quote?.usd?.marketCap).toString()
@@ -143,6 +177,7 @@ class MarketCapCardsAdapter(var context: Context, val mCardList: List<Datum>?): 
         internal var iv_coin_icon: ImageView = itemView.findViewById(R.id.iv_coin_icon)
         internal var chart_24: CombinedChart = itemView.findViewById(R.id.market_cap_combined_chart_24h)
         internal var chart_7d: CombinedChart = itemView.findViewById(R.id.market_cap_combined_chart_7d)
+        internal var iv_favorite: ImageView = itemView.findViewById(R.id.iv_favorite)
     }
 
 }

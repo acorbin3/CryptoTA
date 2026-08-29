@@ -19,6 +19,14 @@ class MarketCapFrag : Fragment() {
     private var marketData: CryptoList? = null
     private var mainView: View? = null
 
+    // Tapping a card jumps to that coin's chart on the Detail Analysis tab
+    private val onCoinClick: (String) -> Unit = { symbol ->
+        (activity as? MainActivity)?.let { act ->
+            act.viewpager.currentItem = 0
+            act.tab1Frag.selectCoinPair(symbol, "USD")
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         mainView = inflater.inflate(R.layout.market_overview_main_layout, container, false)
 
@@ -34,7 +42,7 @@ class MarketCapFrag : Fragment() {
 
         marketData = com.backflippedstudios.crypto_ta.data.DataSource.data.marketCapList
 
-        adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data)
+        adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data, onCoinClick)
         mainView?.rv_market_overview?.layoutManager = LinearLayoutManager(activity?.applicationContext, LinearLayoutManager.VERTICAL, false)
         mainView?.rv_market_overview?.adapter = adapter
         mainView?.swipe_to_refresh_market_cap?.setOnRefreshListener {
@@ -42,7 +50,7 @@ class MarketCapFrag : Fragment() {
                 val refreshed = MainActivity.data.dataSource.getMarketCapV2()
                 activity?.runOnUiThread {
                     marketData = refreshed
-                    adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data)
+                    adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data, onCoinClick)
                     mainView?.rv_market_overview?.adapter = adapter
                     mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
                 }
@@ -57,7 +65,7 @@ class MarketCapFrag : Fragment() {
     fun processGraphs() {
         marketData = com.backflippedstudios.crypto_ta.data.DataSource.data.marketCapList
         activity?.runOnUiThread {
-            adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data)
+            adapter = MarketCapCardsAdapter(activity?.applicationContext!!, marketData?.data, onCoinClick)
             mainView?.rv_market_overview?.adapter = adapter
         }
     }

@@ -74,7 +74,6 @@ class DetailedAnalysisFrag : Fragment() {
     val USER_UUID = "user_uuid"
     private var spinnerTimeFirstRun: Boolean = true
     private var spinnerCoinFirstRun: Boolean = true
-    private var spinnerExchangeFirstRun: Boolean = true
     private lateinit var layout: View
     val MY_PERMISSIONS_REQUEST_WRITE_FILE = 0
     val MY_PERMISSIONS_REQUEST_READ_FILE = 0
@@ -82,6 +81,7 @@ class DetailedAnalysisFrag : Fragment() {
 
     var mainView: View? = null
     val title = "Detail Analsis"
+    private var coinPairItems: ArrayList<String> = ArrayList()
 
 
     object data {
@@ -309,6 +309,15 @@ class DetailedAnalysisFrag : Fragment() {
                     ?: 0
             mainView?.spinner_coin_type?.adapter = coinAdapter
             mainView?.spinner_coin_type?.setSelection(coinIndex)
+            coinPairItems = strListCoins1
+            // 250 coins x 3 pairs is too long to scroll: tapping the spinner opens
+            // a filterable search dialog instead of the stock popup.
+            mainView?.spinner_coin_type?.setOnTouchListener { _, event ->
+                if (event.action == android.view.MotionEvent.ACTION_UP) {
+                    showCoinSearchDialog()
+                }
+                true
+            }
             mainView?.spinner_coin_type?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
                     if (spinnerCoinFirstRun) {
@@ -350,7 +359,7 @@ class DetailedAnalysisFrag : Fragment() {
                         data.coinSelected = selectedCoin
                         data.currencySelected = selectedCurrency
                         //                        data.dataSource.initExchangesForCoin(data.coinSelected.toLowerCase())
-                        updateExchangeDueToCoinUpdate(context)
+                        updateDataSourceLabel()
                         //                        updateCurrencyList()
                         //                println("update graph from coin change")
                         //Update the chart with the latest data from the web
@@ -370,53 +379,6 @@ class DetailedAnalysisFrag : Fragment() {
 
             }
         }
-        //Dropdown for exchanges
-        if (internetOn) {
-            updateExchangeDueToCoinUpdate(context)
-            mainView?.spinner_exchange_type?.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
-                    if (spinnerExchangeFirstRun) {
-                        spinnerExchangeFirstRun = false
-                        return
-                    }
-
-                    //Update shared preferences
-                    val editor = data.prefs!!.edit()
-                    val row = p1?.findViewById<TextView>(R.id.tvHeader)?.text as String?
-                    editor.putString(EXCHANGE_SELETED, row)
-                    editor.apply()
-                    val bundle = Bundle()
-                    bundle.putString("uuid", data.uuid)
-                    bundle.putString("select_exchange", row.toString())
-                    Analytics.logEvent("changing_exchange", bundle)
-                    println("Changing exchange to ${row.toString()} from ${data.exchangeSelected}")
-                    if (data.exchangeSelected != row.toString()) {
-
-                        var len = resources.getStringArray(R.array.time_periods).size - 1
-                        println("Clearing all TA 0..$len")
-                        for (i in 0..len) {
-                            data.all_ta[i].clearAll()
-                        }
-                        data.exchangeSelected = row.toString()
-                        //Update the currancies
-                        //                        updateCurrencyList()
-                        println("update graph from exchange change")
-                        //Update the chart with the latest data from the web
-                        data.endTA = true
-                        data.runningTA.lock()
-                        data.runningTA.unlock()
-                        updateCurrentGraphFromWebData(data.saved_time_period, data.coinSelected, data.exchangeSelected, data.currencySelected, true)
-                    }
-
-
-                }
-
-                override fun onNothingSelected(p0: AdapterView<*>?) = Unit
-
-            }
-
-        }
-
         //Live price
         if (internetOn) {
 
@@ -645,7 +607,7 @@ class DetailedAnalysisFrag : Fragment() {
                     activity?.runOnUiThread {
                         mainView?.spinner_coin_type?.setSelection(coinIndex)
                     }
-                    updateExchangeDueToCoinUpdate(context,false)
+                    updateDataSourceLabel()
                     executeGraphUpdate(data.saved_time_period, selectedCoin, data.exchangeSelected, selectedCurrency, true, true)
 
                     var loadingComplete = false
@@ -942,42 +904,11 @@ class DetailedAnalysisFrag : Fragment() {
         }
     }
 
-    private fun updateExchangeDueToCoinUpdate(context: Context, updatePrefs: Boolean = true) {
-        val exchanges: List<DataSource.Exchange> = DataSource.data.coins[data.coinSelected.toLowerCase()].let {
-            it?.exchanges?.filter { it.paring.contains(data.currencySelected.toLowerCase()) }
-        } ?: return
-        if (exchanges.isEmpty())
-            return
-        var strListExchanges: ArrayList<String> = ArrayList()
-        for (i in exchanges.iterator()) {
-            strListExchanges.add(i.exchange.capitalize())
-        }
-        val strSetExchanges: HashSet<String> = HashSet(strListExchanges)
-        strListExchanges = ArrayList(strSetExchanges)
-        strListExchanges.sort()
-        val exchangeAdapter = SimpleArrowDropdownAdapter(context, R.layout.spinner_dropdown_main_view_with_arrow, strListExchanges)
-        exchangeAdapter.setDropDownViewResource(R.layout.spinner_dropdown_main_view_no_arrow)
-
+    // Data source is chosen automatically (Coinbase when the pair exists, else
+    // CoinGecko); this just keeps the label in the bottom bar accurate.
+    fun updateDataSourceLabel() {
         activity?.runOnUiThread {
-            mainView?.spinner_exchange_type?.adapter = exchangeAdapter
-        }
-        //reset first selection on Exchange spinner so we dont update the graph 2 times
-        spinnerExchangeFirstRun = true
-        //Check if previous exchange is still in the list, if not select the first one
-        if (strListExchanges.contains(data.exchangeSelected)) {
-            activity?.runOnUiThread {
-                mainView?.spinner_exchange_type?.setSelection(strListExchanges.indexOf(data.exchangeSelected))
-            }
-        } else {
-            activity?.runOnUiThread {
-                mainView?.spinner_exchange_type?.setSelection(0)
-            }
-            if (updatePrefs) {
-                val editor = data.prefs!!.edit()
-                editor.putString(EXCHANGE_SELETED, strListExchanges[0])
-                editor.apply()
-            }
-            data.exchangeSelected = strListExchanges[0]
+            mainView?.tv_data_source?.text = DataSource.lastCandleSource
         }
     }
 
@@ -1004,7 +935,6 @@ class DetailedAnalysisFrag : Fragment() {
         println("Task running")
         activity?.runOnUiThread {
             mainView?.spinner_coin_type?.isEnabled = false
-            mainView?.spinner_exchange_type?.isEnabled = false
             mainView?.spinner_time_period?.isEnabled = false
         }
         if (data.all_ta[position].getCandlestickData(Overlay.Kind.CandleStick).size == 0 || forceUpdate) {
@@ -1048,7 +978,6 @@ class DetailedAnalysisFrag : Fragment() {
 
                     mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
                     mainView?.spinner_coin_type?.isEnabled = true
-                    mainView?.spinner_exchange_type?.isEnabled = true
                     mainView?.spinner_time_period?.isEnabled = true
                 }
 
@@ -1128,11 +1057,68 @@ class DetailedAnalysisFrag : Fragment() {
                 mainView?.all_charts_recycler_view?.adapter!!.notifyDataSetChanged()
 
             mainView?.spinner_coin_type?.isEnabled = true
-            mainView?.spinner_exchange_type?.isEnabled = true
             mainView?.spinner_time_period?.isEnabled = true
             mainView?.swipe_to_refresh_market_cap?.isRefreshing = false
         }
 
+    }
+
+    private fun showCoinSearchDialog() {
+        val ctx = activity ?: return
+        if (coinPairItems.isEmpty()) return
+
+        val container = android.widget.LinearLayout(ctx)
+        container.orientation = android.widget.LinearLayout.VERTICAL
+        val searchBox = android.widget.EditText(ctx)
+        searchBox.hint = "Search coins..."
+        searchBox.maxLines = 1
+        container.addView(searchBox)
+        val listView = android.widget.ListView(ctx)
+        container.addView(listView)
+
+        val listAdapter = android.widget.ArrayAdapter(ctx,
+                android.R.layout.simple_list_item_1, ArrayList(coinPairItems))
+        listView.adapter = listAdapter
+
+        searchBox.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun afterTextChanged(s: android.text.Editable?) {
+                listAdapter.filter.filter(s)
+            }
+        })
+
+        val dialog = AlertDialog.Builder(ctx, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("Select coin")
+                .setView(container)
+                .setNegativeButton("Cancel") { d, _ -> d.dismiss() }
+                .create()
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val chosen = listAdapter.getItem(position)
+            val index = coinPairItems.indexOf(chosen)
+            if (index >= 0) {
+                mainView?.spinner_coin_type?.setSelection(index)
+            }
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    // Jump the chart to a coin/currency pair (used by the Market Cap card tap).
+    // Setting the spinner selection fires its listener, which reloads the chart.
+    fun selectCoinPair(symbol: String, currency: String) {
+        val target = coinPairItems.indexOfFirst {
+            var coinPart = it.substringBefore("/")
+            if (coinPart.contains("-")) coinPart = coinPart.substringBefore("-")
+            coinPart.equals(symbol, ignoreCase = true) &&
+                    it.substringAfter("/").equals(currency, ignoreCase = true)
+        }
+        if (target >= 0) {
+            activity?.runOnUiThread {
+                mainView?.spinner_coin_type?.setSelection(target)
+            }
+        }
     }
 
     // Comma-grouped price display, e.g. 79,249.00; small-cap coins keep more decimals

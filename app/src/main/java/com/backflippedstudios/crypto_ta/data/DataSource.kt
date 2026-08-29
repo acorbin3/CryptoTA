@@ -122,6 +122,15 @@ class DataSource {
         private const val API_ROOT = "https://api.coingecko.com/api/v3"
         private val gson = Gson()
 
+        // Which provider produced the candles currently on screen
+        @Volatile
+        var lastCandleSource: String = "CoinGecko"
+
+        // Set once by MainActivity; used for the on-disk response cache so the
+        // app can open instantly with stale data while fresh data loads.
+        @Volatile
+        var appContext: android.content.Context? = null
+
         // Simple caches so spinner changes and the live-price timer don't hammer
         // CoinGecko's free-tier rate limit (~10-30 calls/min).
         private val tickCache = HashMap<String, Pair<Long, ArrayList<Tick>>>()
@@ -161,6 +170,37 @@ class DataSource {
         return null
     }
 
+    private fun cacheFile(key: String): java.io.File? =
+            appContext?.let { java.io.File(it.cacheDir, "api_$key.json") }
+
+    private fun writeCache(key: String, body: String) {
+        try {
+            cacheFile(key)?.writeText(body)
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun readCache(key: String): String? {
+        return try {
+            cacheFile(key)?.takeIf { it.exists() }?.readText()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Network first; successful bodies are cached to disk and replayed when the
+    // network (or the rate limit) fails.
+    private fun httpGetJsonCached(urlStr: String, cacheKey: String): String? {
+        val body = httpGetJson(urlStr)
+        if (body != null) {
+            writeCache(cacheKey, body)
+            return body
+        }
+        val cached = readCache(cacheKey)
+        if (cached != null) println("Using cached response for $cacheKey")
+        return cached
+    }
+
     private fun geckoIdFor(coin: String): String? = data.coins[coin.toLowerCase()]?.url
 
     /**
@@ -170,6 +210,15 @@ class DataSource {
     fun initCoinsGecko(): Boolean {
         val body = httpGetJson("$API_ROOT/coins/markets?vs_currency=usd&order=market_cap_desc" +
                 "&per_page=250&page=1&sparkline=true&price_change_percentage=24h,7d") ?: return false
+        val ok = parseMarkets(body)
+        if (ok) writeCache("markets", body)
+        return ok
+    }
+
+    // Instant cold open: replay the last successful market response from disk
+    fun loadCoinsFromCache(): Boolean = readCache("markets")?.let { parseMarkets(it) } ?: false
+
+    private fun parseMarkets(body: String): Boolean {
         val markets: Array<GeckoMarket> = try {
             gson.fromJson(body, Array<GeckoMarket>::class.java)
         } catch (e: Exception) {
@@ -257,7 +306,8 @@ class DataSource {
         }
 
         val ticks = ArrayList<Tick>()
-        val body = httpGetJson("$API_ROOT/coins/$geckoId/ohlc?vs_currency=$vsCurrency&days=$days")
+        val body = httpGetJsonCached("$API_ROOT/coins/$geckoId/ohlc?vs_currency=$vsCurrency&days=$days",
+                "ohlc_${geckoId}_${vsCurrency}_$days")
                 ?: return ticks
         val candles: Array<DoubleArray> = try {
             gson.fromJson(body, Array<DoubleArray>::class.java)
@@ -311,7 +361,8 @@ class DataSource {
     }
 
     private fun getVolumeSeries(geckoId: String, vsCurrency: String, days: Int): List<DoubleArray> {
-        val body = httpGetJson("$API_ROOT/coins/$geckoId/market_chart?vs_currency=$vsCurrency&days=$days")
+        val body = httpGetJsonCached("$API_ROOT/coins/$geckoId/market_chart?vs_currency=$vsCurrency&days=$days",
+                "vol_${geckoId}_${vsCurrency}_$days")
                 ?: return emptyList()
         return try {
             val obj: JsonObject = JsonParser.parseString(body).asJsonObject

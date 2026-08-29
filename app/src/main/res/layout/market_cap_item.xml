@@ -59,6 +59,16 @@
             android:text="TextView"
             app:layout_constraintLeft_toRightOf="@+id/tv_marketcap" />
 
+        <ImageView
+            android:id="@+id/iv_favorite"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_margin="4dp"
+            android:contentDescription="Toggle favorite"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@android:drawable/btn_star_big_off" />
+
         <TextView
             android:id="@+id/tv_percent_change_24h"
             android:layout_width="wrap_content"
