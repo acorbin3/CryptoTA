@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadCoins() {
         GlobalScope.launch(Dispatchers.IO) {
             // Show the last-known data instantly while fresh data loads
-            val cached = data.dataSource.loadCoinsFromCache()
+            val cached = com.backflippedstudios.crypto_ta.data.CryptoRepository.loadCachedMarkets()
             if (cached) {
                 println("Loaded coin list from disk cache")
                 runOnUiThread { refreshTabs() }
@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
             // Retry with backoff so a rate-limited cold start recovers on its own
             var loaded = false
             for (attempt in 1..10) {
-                loaded = data.dataSource.initCoinsGecko()
+                loaded = com.backflippedstudios.crypto_ta.data.CryptoRepository.refreshMarkets()
                 if (loaded) break
                 println("Failed to load coin list from CoinGecko (attempt $attempt), retrying...")
                 kotlinx.coroutines.delay(15_000L * attempt.coerceAtMost(4))

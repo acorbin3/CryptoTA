@@ -18,12 +18,12 @@ import android.net.Uri
 import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Environment
-import android.os.StrictMode
 import com.google.android.material.snackbar.Snackbar
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -39,6 +39,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import com.backflippedstudios.crypto_ta.*
 import com.backflippedstudios.crypto_ta.customchartmods.ChartStatusData
+import com.backflippedstudios.crypto_ta.data.CryptoRepository
 import com.backflippedstudios.crypto_ta.data.DataSource
 import com.backflippedstudios.crypto_ta.dropdownmenus.CoinSimpleArrowDropdownAdapter
 import com.backflippedstudios.crypto_ta.dropdownmenus.OverlayAdapter
@@ -47,7 +48,6 @@ import com.backflippedstudios.crypto_ta.recyclerviews.ChartListAdapter
 import com.github.mikephil.charting.charts.CombinedChart
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.ta4j.core.Tick
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.format.DateTimeFormatter
@@ -156,10 +156,6 @@ class DetailedAnalysisFrag : Fragment() {
         println("Loading from scratch")
         data.displayWidth = activity?.windowManager?.defaultDisplay?.width!! * 2
         data.loading = true
-//        if(BuildConfig.DEBUG) {
-        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
-        StrictMode.setThreadPolicy(policy)
-//        }
         activity?.window?.decorView?.systemUiVisibility = data.systemUIVisibilityPermissions
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
 
@@ -254,7 +250,7 @@ class DetailedAnalysisFrag : Fragment() {
         return mainView
     }
 
-    fun processInit(context: Context,internetOn: Boolean) = runBlocking{
+    fun processInit(context: Context,internetOn: Boolean) {
         val strListCoins: ArrayList<String> = ArrayList()
         //Dropdown for coins
         var strListCoins1 = strListCoins
@@ -382,25 +378,8 @@ class DetailedAnalysisFrag : Fragment() {
         //Live price
         if (internetOn) {
 
-            //Initial value of live price
-            mainView?.tv_live_price?.text = formatPrice(MainActivity.data.dataSource.getCurrentValue(
-                    data.coinSelected,
-                    data.exchangeSelected,
-                    data.currencySelected))
-            //Populate exchange data for BTC so we can look up data for USD conversion
-            if (data.coinSelected.toLowerCase() != "btc")
-                MainActivity.data.dataSource.initExchangesForCoin("btc")
-            if (!data.currencySelected.toLowerCase().contains("usd")) {
-                mainView?.tv_usd_value?.text = "$" + formatPrice(MainActivity.data.dataSource.getUSDValue(
-                        data.coinSelected,
-                        data.exchangeSelected))
-            } else {
-                //Case for when we are already looking at BTC to USD, no need to do conversion
-                mainView?.tv_usd_value?.text = "$" + formatPrice(MainActivity.data.dataSource.getCurrentValue(
-                        data.coinSelected,
-                        data.exchangeSelected,
-                        data.currencySelected))
-            }
+            //Initial value of live price, fetched off the main thread
+            updateCurrentPrices()
 
             //Stream live prices over the Coinbase WebSocket feed when the pair
             //exists there; the polling timer below stays as the fallback.
@@ -823,22 +802,27 @@ class DetailedAnalysisFrag : Fragment() {
         }
     }
 
+    // Fetches on IO, posts to the UI thread — safe to call from anywhere
     private fun updateCurrentPrices() {
-        try {
-            val newPrice = MainActivity.data.dataSource.getCurrentValue(data.coinSelected,
-                    data.exchangeSelected,
-                    data.currencySelected)
-            var newUSDPrice = MainActivity.data.dataSource.getUSDValue(
-                    data.coinSelected,
-                    data.exchangeSelected)
+        val lifecycle = view?.let { viewLifecycleOwner.lifecycleScope } ?: return
+        lifecycle.launch {
+            try {
+                val newPrice = CryptoRepository.getCurrentValue(data.coinSelected,
+                        data.exchangeSelected,
+                        data.currencySelected)
+                val newUSDPrice = CryptoRepository.getUSDValue(
+                        data.coinSelected,
+                        data.exchangeSelected)
 
-            mainView?.tv_live_price?.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
-            mainView?.tv_usd_value?.setTextColor(ContextCompat.getColor(activity?.applicationContext!!, R.color.md_white_1000))
+                val ctx = activity?.applicationContext ?: return@launch
+                mainView?.tv_live_price?.setTextColor(ContextCompat.getColor(ctx, R.color.md_white_1000))
+                mainView?.tv_usd_value?.setTextColor(ContextCompat.getColor(ctx, R.color.md_white_1000))
 
-            mainView?.tv_live_price?.text = formatPrice(newPrice)
-            mainView?.tv_usd_value?.text = "$" + formatPrice(newUSDPrice)
-        } catch (e: Exception) {
+                mainView?.tv_live_price?.text = formatPrice(newPrice)
+                mainView?.tv_usd_value?.text = "$" + formatPrice(newUSDPrice)
+            } catch (e: Exception) {
 
+            }
         }
     }
 
@@ -927,22 +911,22 @@ class DetailedAnalysisFrag : Fragment() {
         }
     }
 
-    private fun updateCurrentGraphFromWebData(position: Int, coin: String, exchange: String, currency: String, forceUpdate: Boolean) = runBlocking {
+    private fun updateCurrentGraphFromWebData(position: Int, coin: String, exchange: String, currency: String, forceUpdate: Boolean) {
         println("Attempting  to update graph, Pos:$position, Coin:$coin, exchange:$exchange, Currency:$currency, forceUpdate:$forceUpdate")
 
-        GlobalScope.launch{
+        GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             executeGraphUpdate(position, coin, exchange, currency, forceUpdate)
         }
     }
 
-    private fun executeGraphUpdate(
+    private suspend fun executeGraphUpdate(
             position: Int,
             coin: String,
             exchange: String,
             currency: String,
             forceUpdate: Boolean,
             runTA: Boolean = true
-    ) = runBlocking{
+    ) {
         activity?.runOnUiThread {
             mainView?.swipe_to_refresh_market_cap?.isRefreshing = true
             updateCurrentPrices()
@@ -977,7 +961,7 @@ class DetailedAnalysisFrag : Fragment() {
             println("Getting data from web")
             com.backflippedstudios.crypto_ta.data.LivePriceFeed.subscribe(
                     "${coin.toUpperCase()}-${currency.toUpperCase()}")
-            val ticks = MainActivity.data.dataSource.getData(coin, exchange, currency, interval)
+            val ticks = CryptoRepository.getCandles(coin, exchange, currency, interval)
             updateDataSourceLabel()
             Log.d("DEBUG", "Finished getting data")
             if (ticks.size < 10) {
@@ -1000,7 +984,7 @@ class DetailedAnalysisFrag : Fragment() {
                 }
 
 
-                return@runBlocking
+                return
             } else {
                 println("Doing TA $position")
                 DetailedAnalysisFrag.data.taDataLock.lock()
@@ -1127,7 +1111,11 @@ class DetailedAnalysisFrag : Fragment() {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
             override fun afterTextChanged(s: android.text.Editable?) {
-                listAdapter.filter.filter(s)
+                // Match anywhere in "SYM-Name/CUR", not just the prefix
+                val query = s?.toString()?.trim() ?: ""
+                listAdapter.clear()
+                listAdapter.addAll(coinPairItems.filter { it.contains(query, ignoreCase = true) })
+                listAdapter.notifyDataSetChanged()
             }
         })
 
