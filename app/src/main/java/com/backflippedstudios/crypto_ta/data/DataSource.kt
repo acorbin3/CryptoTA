@@ -1,482 +1,530 @@
 package com.backflippedstudios.crypto_ta.data
 
-import android.content.Context
-import android.util.JsonReader
-import android.util.JsonToken
-import com.google.android.gms.tasks.Task
+import com.backflippedstudios.crypto_ta.data.retrofit.CryptoList
+import com.backflippedstudios.crypto_ta.data.retrofit.Datum
+import com.backflippedstudios.crypto_ta.data.retrofit.Quote
+import com.backflippedstudios.crypto_ta.data.retrofit.USD
+import com.github.mikephil.charting.data.Entry
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.annotations.SerializedName
 import org.ta4j.core.BaseTick
 import org.ta4j.core.Decimal
 import org.ta4j.core.Tick
-import java.io.IOException
-import java.io.InputStreamReader
-import java.net.MalformedURLException
-import java.net.URL
 import org.threeten.bp.Instant
 import org.threeten.bp.ZoneId
-import java.util.*
-import javax.net.ssl.HttpsURLConnection
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.QuerySnapshot
-import com.google.firebase.firestore.Source
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
-
 
 /**
  * Created by C0rbin on 11/15/2017.
+ * Rewritten 2026 to use the CoinGecko API (cryptowat.ch was shut down in 2023).
  */
 class DataSource {
 
-    enum class Interval(val seconds: Long){
-        _1MIN(60),
-        _3MIN(60*3),
-        _5MIN(60*5),
-        _15MIN(60*15),
-        _30MIN(60*30),
-        _1HOUR(60*60),
-        _2HOUR(60*60*2),
-        _4HOUR(60*60*4),
-        _6HOUR(60*60*6),
-        _12HOUR(60*60*12),
-        _1DAY(60*60*24),
-        _3DAY(60*60*24*3),
-        _1WEEK(60*60*24*7)
+    // geckoDays: CoinGecko free-tier OHLC granularity is driven by the "days"
+    // window (1 day -> 30 min candles, 2-30 days -> 4 h, 31+ -> 4 day candles).
+    // cbGranularity: nearest supported Coinbase Exchange candle size in seconds
+    // (60, 300, 900, 3600, 21600, 86400).
+    enum class Interval(val seconds: Long, val geckoDays: Int, val cbGranularity: Int) {
+        _1MIN(60, 1, 60),
+        _3MIN(60 * 3, 1, 300),
+        _5MIN(60 * 5, 1, 300),
+        _15MIN(60 * 15, 1, 900),
+        _30MIN(60 * 30, 1, 900),
+        _1HOUR(60 * 60, 7, 3600),
+        _2HOUR(60 * 60 * 2, 14, 3600),
+        _4HOUR(60 * 60 * 4, 30, 21600),
+        _6HOUR(60 * 60 * 6, 30, 21600),
+        _12HOUR(60 * 60 * 12, 30, 21600),
+        _1DAY(60 * 60 * 24, 180, 86400),
+        _3DAY(60 * 60 * 24 * 3, 365, 86400),
+        _1WEEK(60 * 60 * 24 * 7, 365, 86400)
     }
+
     data class Exchange(
             @SerializedName("exchange") val exchange: String,
             @SerializedName("paring") val paring: String,
             @SerializedName("active") val active: Boolean,
             @SerializedName("url") val url: String
     )
+
     data class Asset(
             @SerializedName("id") val id: Int,
             @SerializedName("symboal") val symbol: String,
             @SerializedName("name") val name: String,
             @SerializedName("legal_tender") val FiatLegalTender: Boolean,
-            @SerializedName("url") val url: String,
+            @SerializedName("url") val url: String, // CoinGecko coin id, e.g. "ethereum"
             @SerializedName("exchanges") var exchanges: ArrayList<Exchange> = ArrayList()
     )
 
-    private lateinit var mDbWorkerThread: DbWorkerThread
-    private var mDB: AssetDataBase? = null
-
-    object data{
+    object data {
         var coins: HashMap<String, Asset> = HashMap()
-        var db = FirebaseFirestore.getInstance()
+        var coinData: HashMap<String, ArrayList<Entry>> = HashMap()
+        var lockCoinData: Lock = ReentrantLock()
+        var marketCapList: CryptoList? = null
     }
 
-    fun getData(coin: String, exchange: String, currency: String, interval: Interval) : ArrayList<Tick> {
-        val ticks = ArrayList<Tick>()
-        try {
+    data class CoinData(
+            val coinPair: String,
+            var avgPercentChange: Double,
+            val marketList: ArrayList<MarketData>
+    )
 
-            var granularity = interval.seconds
-            println("About to connect to gdax api")
-            var startCal = Calendar.getInstance()
-            startCal.set(2016, 10, 10)
-            var endCal = Calendar.getInstance()
-            endCal.set(2016, 9, 10)
+    data class MarketData(
+            val exchange: String,
+            val coinPair: String,
+            val lastPrice: Double,
+            val percentChange: Double
+    )
 
-            //println("Start: " + start.fromCalendar(startCal))
-            //println("End: " + end.fromCalendar(endCal))
-            //val url = URL("https://api.gdax.com/products/ETH-USD/candles?granularity="+granularity)
-            var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
-                it.paring.contains(currency.toLowerCase())&&
-                        it.exchange.toLowerCase() == exchange.toLowerCase()
-            }
+    // ---- CoinGecko response models ----
 
-            if(exchangeData?.size == 0){
-                return ticks
-            }
+    private class GeckoSparkline {
+        @SerializedName("price")
+        var price: List<Double>? = null
+    }
 
-            println("Connecting to " + exchangeData?.get(0)?.url + "/ohlc?periods="+granularity)
-            var url = URL(exchangeData?.get(0)?.url + "/ohlc?periods="+granularity)
-            val connection = url.openConnection() as HttpsURLConnection
-            connection.requestMethod = "GET"
-            //connection.setRequestProperty("Accept", "application/json");
-            if (connection.responseCode == 200) {
-                // Success
-                // Further processing here
-                println("Response: " + connection.responseCode)
-            } else {
-                // Error handling code goes here
-            }
+    private class GeckoMarket {
+        @SerializedName("id")
+        var id: String? = null
+        @SerializedName("symbol")
+        var symbol: String? = null
+        @SerializedName("name")
+        var name: String? = null
+        @SerializedName("image")
+        var image: String? = null
+        @SerializedName("current_price")
+        var currentPrice: Double? = null
+        @SerializedName("market_cap")
+        var marketCap: Double? = null
+        @SerializedName("market_cap_rank")
+        var marketCapRank: Int? = null
+        @SerializedName("total_volume")
+        var totalVolume: Double? = null
+        @SerializedName("total_supply")
+        var totalSupply: Double? = null
+        @SerializedName("circulating_supply")
+        var circulatingSupply: Double? = null
+        @SerializedName("price_change_percentage_24h_in_currency")
+        var percentChange24h: Double? = null
+        @SerializedName("price_change_percentage_7d_in_currency")
+        var percentChange7d: Double? = null
+        @SerializedName("sparkline_in_7d")
+        var sparkline: GeckoSparkline? = null
+    }
 
+    companion object {
+        private const val API_ROOT = "https://api.coingecko.com/api/v3"
+        private val gson = Gson()
 
-            val responseBody = connection.inputStream
-            val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-            //println(responseBodyReader)
-            val jsonReader = JsonReader(responseBodyReader)
-            jsonReader.beginObject()//Start results object
-            jsonReader.nextName()
-            jsonReader.beginObject()//Start period object
-            jsonReader.nextName()
-            val peak = jsonReader.peek()
-            if(peak == JsonToken.NULL){
-                println("Bad coin")
-                return ticks
-            }
-            jsonReader.beginArray() // Start processing the JSON object
-            var lastTick: Tick? = null
-            while (jsonReader.hasNext()) { // Loop through all keys
-                jsonReader.beginArray()
-                while (jsonReader.hasNext()) { // Loop through all keys
-                    val time = jsonReader.nextInt()
+        // Which provider produced the candles currently on screen
+        @Volatile
+        var lastCandleSource: String = "CoinGecko"
 
-//                    val dtf = DateTimeFormat.forPattern("yyyy-MMMM-dd hh:mm:ssa")
-//                    val date = Date(time * 1000L)
-//                    val dateTime = DateTime(date)
-                    //println(date.toString())
-                    //println(dtf.print(dateTime))
+        // Set once by MainActivity; used for the on-disk response cache so the
+        // app can open instantly with stale data while fresh data loads.
+        @Volatile
+        var appContext: android.content.Context? = null
 
+        // Simple caches so spinner changes and the live-price timer don't hammer
+        // CoinGecko's free-tier rate limit (~10-30 calls/min).
+        private val tickCache = HashMap<String, Pair<Long, ArrayList<Tick>>>()
+        private val priceCache = HashMap<String, Pair<Long, HashMap<String, Float>>>()
+        private val cbMissingProducts = java.util.Collections.synchronizedSet(HashSet<String>())
+        private const val TICK_CACHE_MS = 60_000L
+        private const val PRICE_CACHE_MS = 30_000L
+    }
 
-                    var open = jsonReader.nextDouble() // Fetch the next key
-                    val high = jsonReader.nextDouble() // Fetch the next key
-                    val low = jsonReader.nextDouble() // Fetch the next key
-                    val close = jsonReader.nextDouble() // Fetch the next key
-                    val volume = jsonReader.nextDouble() // Fetch the next key
-                    val peak = jsonReader.peek()
-                    if(peak == JsonToken.NUMBER){
-                        val unknownFloat = jsonReader.nextDouble()
-                    }
+    @Volatile
+    private var lastHttpCode = 0
 
-                    var i = Instant.ofEpochSecond(time.toLong())
-                    val z = i.atZone(ZoneId.systemDefault())
-                    //clean open and close betwwen last 2 ticks so we don't have gaps
-                    if(lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
-                        open = lastTick.closePrice.toDouble()
-                    }
-                    var currentTick = BaseTick(z,
-                            Decimal.valueOf(open),
-                            Decimal.valueOf(high),
-                            Decimal.valueOf(low),
-                            Decimal.valueOf(close),
-                            Decimal.valueOf(volume))
-                    //Filter out bad data if we get a zero value
-                    if(currentTick.closePrice.isEqual(Decimal.valueOf(0)) or currentTick.minPrice.isEqual(Decimal.valueOf(0))){
-                        if(lastTick != null)
-                            ticks.add(lastTick)
-                    }
-                    else{
-
-                        ticks.add(currentTick)
-                        lastTick = currentTick
-                    }
-//                    println(" Time:" + time + " Low:" + low +
-//                            " High:" + high + " Open:" + open + " Close:" + close + " Volume:" + volume)
+    private fun httpGetJson(urlStr: String): String? {
+        for (attempt in 0..1) {
+            try {
+                val connection = URL(urlStr).openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 15_000
+                connection.readTimeout = 15_000
+                connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("User-Agent", "CryptoTA-Android")
+                val code = connection.responseCode
+                lastHttpCode = code
+                if (code == 200) {
+                    val body = InputStreamReader(connection.inputStream, "UTF-8").use { it.readText() }
+                    connection.disconnect()
+                    return body
                 }
-                jsonReader.endArray()
+                println("CoinGecko request failed ($code): $urlStr")
+                connection.disconnect()
+                // Rate limited: back off once, then give up so the UI isn't stalled
+                if (code == 429 && attempt == 0) {
+                    Thread.sleep(4_000)
+                    continue
+                }
+                return null
+            } catch (e: Exception) {
+                println("CoinGecko request error for $urlStr: ${e.message}")
+                return null
             }
-            jsonReader.endArray()
-            jsonReader.close()
-            connection.disconnect()
-            println("Finished parsing and found: " + ticks.size)
         }
-        catch (e : MalformedURLException) {
-            e.printStackTrace()
-        } catch (e: IOException) {
-            e.printStackTrace()
+        return null
+    }
+
+    private fun cacheFile(key: String): java.io.File? =
+            appContext?.let { java.io.File(it.cacheDir, "api_$key.json") }
+
+    private fun writeCache(key: String, body: String) {
+        try {
+            cacheFile(key)?.writeText(body)
+        } catch (e: Exception) {
         }
-        catch (e: NumberFormatException){
-            e.printStackTrace()
-            ticks.clear()
-            return ticks
+    }
+
+    private fun readCache(key: String): String? {
+        return try {
+            cacheFile(key)?.takeIf { it.exists() }?.readText()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Network first; successful bodies are cached to disk and replayed when the
+    // network (or the rate limit) fails.
+    private fun httpGetJsonCached(urlStr: String, cacheKey: String): String? {
+        val body = httpGetJson(urlStr)
+        if (body != null) {
+            writeCache(cacheKey, body)
+            return body
+        }
+        val cached = readCache(cacheKey)
+        if (cached != null) println("Using cached response for $cacheKey")
+        return cached
+    }
+
+    private fun geckoIdFor(coin: String): String? = data.coins[coin.toLowerCase()]?.url
+
+    /**
+     * Loads the top coins from CoinGecko, populating the coin catalog, the
+     * market-cap tab data, and the 24h/7d sparkline mini-charts in one request.
+     */
+    fun initCoinsGecko(): Boolean {
+        val body = httpGetJson("$API_ROOT/coins/markets?vs_currency=usd&order=market_cap_desc" +
+                "&per_page=250&page=1&sparkline=true&price_change_percentage=24h,7d") ?: return false
+        val ok = parseMarkets(body)
+        if (ok) writeCache("markets", body)
+        return ok
+    }
+
+    // Instant cold open: replay the last successful market response from disk
+    fun loadCoinsFromCache(): Boolean = readCache("markets")?.let { parseMarkets(it) } ?: false
+
+    private fun parseMarkets(body: String): Boolean {
+        val markets: Array<GeckoMarket> = try {
+            gson.fromJson(body, Array<GeckoMarket>::class.java)
+        } catch (e: Exception) {
+            println("Failed to parse CoinGecko markets: ${e.message}")
+            return false
         }
 
+        val cryptoList = CryptoList()
+        val datumList = ArrayList<Datum>()
+
+        data.lockCoinData.lock()
+        try {
+            for (market in markets) {
+                val geckoId = market.id ?: continue
+                val symbol = market.symbol?.toLowerCase() ?: continue
+
+                val exchanges = arrayListOf(
+                        Exchange("CoinGecko", symbol + "usd", true, geckoId),
+                        Exchange("CoinGecko", symbol + "btc", true, geckoId),
+                        Exchange("CoinGecko", symbol + "eth", true, geckoId)
+                )
+                data.coins[symbol] = Asset(
+                        market.marketCapRank ?: 0,
+                        symbol,
+                        market.name ?: symbol,
+                        false,
+                        geckoId,
+                        exchanges)
+
+                // Market-cap tab entry, mapped onto the existing model
+                val datum = Datum()
+                datum.id = market.marketCapRank
+                datum.name = market.name
+                datum.symbol = market.symbol?.toUpperCase()
+                datum.slug = geckoId
+                datum.imageUrl = market.image
+                datum.totalSupply = market.totalSupply ?: market.circulatingSupply
+                val usd = USD()
+                usd.price = market.currentPrice
+                usd.volume24h = market.totalVolume
+                usd.marketCap = market.marketCap
+                usd.percentChange24h = market.percentChange24h
+                usd.percentChange7d = market.percentChange7d
+                val quote = Quote()
+                quote.usd = usd
+                datum.quote = quote
+                datumList.add(datum)
+
+                // Sparkline (7d of hourly prices) feeds the mini charts
+                val prices = market.sparkline?.price
+                if (prices != null && prices.isNotEmpty()) {
+                    val entries7d = ArrayList<Entry>()
+                    prices.forEachIndexed { i, p -> entries7d.add(Entry(i.toFloat(), p.toFloat())) }
+                    data.coinData[symbol + "_7d"] = entries7d
+
+                    val last24 = prices.takeLast(24)
+                    val entries24 = ArrayList<Entry>()
+                    last24.forEachIndexed { i, p -> entries24.add(Entry(i.toFloat(), p.toFloat())) }
+                    data.coinData[symbol + "_24h"] = entries24
+                }
+            }
+        } finally {
+            data.lockCoinData.unlock()
+        }
+
+        cryptoList.data = datumList
+        data.marketCapList = cryptoList
+        println("Loaded ${datumList.size} coins from CoinGecko")
+        return datumList.isNotEmpty()
+    }
+
+    fun getData(coin: String, exchange: String, currency: String, interval: Interval): ArrayList<Tick> {
+        // Coinbase Exchange first: real per-candle volume, exchange-grade
+        // granularity, and a far friendlier rate limit than CoinGecko's free tier
+        if (currency.toLowerCase() in listOf("usd", "btc", "eur")) {
+            val product = coin.toUpperCase() + "-" + currency.toUpperCase()
+            val cbTicks = getCoinbaseTicks(product, interval)
+            if (cbTicks.size >= 10) {
+                lastCandleSource = "Coinbase"
+                return cbTicks
+            }
+        }
+        val geckoId = geckoIdFor(coin) ?: return ArrayList()
+        val ticks = getTicks(geckoId, currency.toLowerCase(), interval.geckoDays)
+        if (ticks.isNotEmpty()) lastCandleSource = "CoinGecko"
         return ticks
     }
 
-    fun getCurrentValue(coin: String, exchange: String, currency: String) : Float{
-        var endPrice = 0.0F
+    private fun getCoinbaseTicks(product: String, interval: Interval): ArrayList<Tick> {
+        val ticks = ArrayList<Tick>()
+        if (product in cbMissingProducts) return ticks
 
-        var exchangeData = data.coins[coin.toLowerCase()]?.exchanges?.filter {
-            it.paring.contains(currency.toLowerCase())&&
-                    it.exchange.toLowerCase() == exchange.toLowerCase()
+        val cacheKey = "cb_${product}_${interval.cbGranularity}"
+        synchronized(tickCache) {
+            tickCache[cacheKey]?.let { (time, cached) ->
+                if (System.currentTimeMillis() - time < TICK_CACHE_MS) {
+                    return ArrayList(cached)
+                }
+            }
         }
-        if(exchangeData?.size ?: 0 == 0){
+
+        val body = httpGetJsonCached(
+                "https://api.exchange.coinbase.com/products/$product/candles?granularity=${interval.cbGranularity}",
+                cacheKey)
+        if (body == null) {
+            // Unknown product: remember so we don't ask Coinbase again this session
+            if (lastHttpCode == 404) cbMissingProducts.add(product)
+            return ticks
+        }
+
+        val candles: Array<DoubleArray> = try {
+            gson.fromJson(body, Array<DoubleArray>::class.java)
+        } catch (e: Exception) {
+            println("Failed to parse Coinbase candles: ${e.message}")
+            return ticks
+        }
+        // Coinbase returns [time, low, high, open, close, volume], newest first
+        candles.reverse()
+        var lastTick: Tick? = null
+        for (candle in candles) {
+            if (candle.size < 6) continue
+            val z = Instant.ofEpochSecond(candle[0].toLong()).atZone(ZoneId.systemDefault())
+            var open = candle[3]
+            if (lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
+                open = lastTick.closePrice.toDouble()
+            }
+            val currentTick = BaseTick(z,
+                    Decimal.valueOf(open),
+                    Decimal.valueOf(candle[2]),
+                    Decimal.valueOf(candle[1]),
+                    Decimal.valueOf(candle[4]),
+                    Decimal.valueOf(candle[5]))
+            if (currentTick.closePrice.isEqual(Decimal.valueOf(0)) or currentTick.minPrice.isEqual(Decimal.valueOf(0))) {
+                if (lastTick != null) ticks.add(lastTick)
+            } else {
+                ticks.add(currentTick)
+                lastTick = currentTick
+            }
+        }
+        println("Parsed ${ticks.size} Coinbase candles for $product@${interval.cbGranularity}s")
+
+        if (ticks.isNotEmpty()) {
+            synchronized(tickCache) {
+                tickCache[cacheKey] = Pair(System.currentTimeMillis(), ArrayList(ticks))
+            }
+        }
+        return ticks
+    }
+
+    private fun getTicks(geckoId: String, vsCurrency: String, days: Int): ArrayList<Tick> {
+        val cacheKey = "$geckoId/$vsCurrency/$days"
+        synchronized(tickCache) {
+            tickCache[cacheKey]?.let { (time, ticks) ->
+                if (System.currentTimeMillis() - time < TICK_CACHE_MS) {
+                    return ArrayList(ticks)
+                }
+            }
+        }
+
+        val ticks = ArrayList<Tick>()
+        val body = httpGetJsonCached("$API_ROOT/coins/$geckoId/ohlc?vs_currency=$vsCurrency&days=$days",
+                "ohlc_${geckoId}_${vsCurrency}_$days")
+                ?: return ticks
+        val candles: Array<DoubleArray> = try {
+            gson.fromJson(body, Array<DoubleArray>::class.java)
+        } catch (e: Exception) {
+            println("Failed to parse OHLC: ${e.message}")
+            return ticks
+        }
+
+        // CoinGecko OHLC carries no volume; use the rolling 24h volume series from
+        // market_chart so volume-based indicators still have a real signal.
+        val volumes = getVolumeSeries(geckoId, vsCurrency, days)
+
+        var lastTick: Tick? = null
+        for (candle in candles) {
+            if (candle.size < 5) continue
+            val timeMs = candle[0].toLong()
+            var open = candle[1]
+            val high = candle[2]
+            val low = candle[3]
+            val close = candle[4]
+            val volume = nearestVolume(volumes, timeMs)
+
+            val z = Instant.ofEpochMilli(timeMs).atZone(ZoneId.systemDefault())
+            // Stitch open to the previous close so the chart has no gaps
+            if (lastTick != null && !lastTick.closePrice.isEqual(Decimal.valueOf(open))) {
+                open = lastTick.closePrice.toDouble()
+            }
+            val currentTick = BaseTick(z,
+                    Decimal.valueOf(open),
+                    Decimal.valueOf(high),
+                    Decimal.valueOf(low),
+                    Decimal.valueOf(close),
+                    Decimal.valueOf(volume))
+            // Filter out bad data if we get a zero value
+            if (currentTick.closePrice.isEqual(Decimal.valueOf(0)) or currentTick.minPrice.isEqual(Decimal.valueOf(0))) {
+                if (lastTick != null)
+                    ticks.add(lastTick)
+            } else {
+                ticks.add(currentTick)
+                lastTick = currentTick
+            }
+        }
+        println("Parsed ${ticks.size} candles for $geckoId/$vsCurrency days=$days")
+
+        if (ticks.isNotEmpty()) {
+            synchronized(tickCache) {
+                tickCache[cacheKey] = Pair(System.currentTimeMillis(), ArrayList(ticks))
+            }
+        }
+        return ticks
+    }
+
+    private fun getVolumeSeries(geckoId: String, vsCurrency: String, days: Int): List<DoubleArray> {
+        val body = httpGetJsonCached("$API_ROOT/coins/$geckoId/market_chart?vs_currency=$vsCurrency&days=$days",
+                "vol_${geckoId}_${vsCurrency}_$days")
+                ?: return emptyList()
+        return try {
+            val obj: JsonObject = JsonParser.parseString(body).asJsonObject
+            gson.fromJson(obj.get("total_volumes"), Array<DoubleArray>::class.java).toList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun nearestVolume(volumes: List<DoubleArray>, timeMs: Long): Double {
+        if (volumes.isEmpty()) return 0.0
+        var best = volumes[0]
+        var bestDiff = Long.MAX_VALUE
+        for (v in volumes) {
+            if (v.size < 2) continue
+            val diff = Math.abs(v[0].toLong() - timeMs)
+            if (diff < bestDiff) {
+                bestDiff = diff
+                best = v
+            }
+        }
+        return if (best.size >= 2) best[1] else 0.0
+    }
+
+    fun getCurrentValue(coin: String, exchange: String, currency: String): Float {
+        val geckoId = geckoIdFor(coin) ?: return 0.0F
+        val cur = currency.toLowerCase()
+
+        synchronized(priceCache) {
+            priceCache[geckoId]?.let { (time, prices) ->
+                if (System.currentTimeMillis() - time < PRICE_CACHE_MS) {
+                    return prices[cur] ?: 0.0F
+                }
+            }
+        }
+
+        val body = httpGetJson("$API_ROOT/simple/price?ids=$geckoId&vs_currencies=usd,btc,eth")
+        if (body == null) {
+            // Cache the miss so a failing endpoint isn't hammered every poll
+            synchronized(priceCache) {
+                priceCache[geckoId] = Pair(System.currentTimeMillis(), HashMap())
+            }
             return 0.0F
         }
-        val urlStr = "${exchangeData?.get(0)?.url}/price"
-
-        var url = URL(urlStr)
-//        println("Getting current price: $urlStr. Coin $coin currency $currency exchange $exchange")
-        try {
-            val connection = url.openConnection() as HttpsURLConnection
-            connection.requestMethod = "GET"
-
-            if (connection.responseCode == 200) {
-                // Success
-                // Further processing here
-//            println("Response: " + connection.responseCode)
-                val responseBody = connection.inputStream
-                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-                //println(responseBodyReader)
-                val jsonReader = JsonReader(responseBodyReader)
-                //Result:
-                //{"result":{"price":0.0162},"allowance":{"cost":1872372,"remaining":7942076584}}
-                jsonReader.beginObject()//Start results object
-                jsonReader.nextName()
-                jsonReader.beginObject()//Start price object
-                jsonReader.nextName()
-                endPrice = jsonReader.nextDouble().toFloat()
-
-//            println("Found price: $endPrice")
-                jsonReader.close()
-                connection.disconnect()
-            } else {
-                // Error handling code goes here
+        return try {
+            val obj = JsonParser.parseString(body).asJsonObject.getAsJsonObject(geckoId)
+            val prices = HashMap<String, Float>()
+            for ((key, value) in obj.entrySet()) {
+                prices[key] = value.asFloat
             }
-        }catch (e: Exception){
-
-        }
-
-
-
-
-        return endPrice
-    }
-
-    fun getUSDValue(coin: String, exchange: String): Float{
-        //Assumption that exchange has a coin to BTC value option at first,
-        // if not then we use binance as a backup
-        //if not then we might need to do an exhaustive search for coinBTC value
-//        print("getting USD value")
-
-        //Look for an exchange that has a coin to BTC value
-        val coinBTCValue: Float = getCurrentValue(coin,exchange,"btc")
-        //Look for the latest BTC to USD Value ratio
-        val btcusdValue: Float = getCurrentValue("btc","gdax","usd")
-        //Convert coinBTC value to coinUSD value
-
-        val usdValue: Float = coinBTCValue * btcusdValue
-
-        return usdValue
-    }
-    fun initExchangesForCoin(coinSymbol: String){
-        //Check to see if we need to get exchanges only if coin doesnt have exchange list already
-        if(data.coins[coinSymbol]?.exchanges == null) return
-        data.coins[coinSymbol].let {
-            it?.exchanges.let {
-                if(it?.count() ?: 0 > 0)
-                    return
+            synchronized(priceCache) {
+                priceCache[geckoId] = Pair(System.currentTimeMillis(), prices)
             }
-        }
-
-        try {
-            var url = URL("https://api.cryptowat.ch/assets/" + coinSymbol)
-            val connection = url.openConnection() as HttpsURLConnection
-            connection.requestMethod = "GET"
-            if (connection.responseCode == 200) {
-                // Success
-                // Further processing here
-                println("Response: " + connection.responseCode)
-                val responseBody = connection.inputStream
-                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-                //println(responseBodyReader)
-                val jsonReader = JsonReader(responseBodyReader)
-                jsonReader.beginObject()//Start results object
-                jsonReader.nextName() //result
-                jsonReader.beginObject()//Start results object
-                jsonReader.nextName()
-                jsonReader.nextInt() //id item
-                jsonReader.nextName()
-                jsonReader.nextString() //symbol
-                jsonReader.nextName()
-                jsonReader.nextString() // name
-                jsonReader.nextName()
-                jsonReader.nextBoolean() // fiat
-                jsonReader.nextName() // Markets
-                jsonReader.beginObject()//Start Markets object
-                jsonReader.nextName() // Base item
-                jsonReader.beginArray() // Start processing the base object
-                var coin = java.util.HashMap<String, Any>()
-                data.coins[coinSymbol].let {
-                    coin["id"] = it!!.id
-                    coin["s"] = it.symbol
-                    coin["n"] = it.name
-                    coin["flt"] = it.FiatLegalTender
-                }
-                var exchangeData = ArrayList<java.util.HashMap<String, Any>>()
-                while (jsonReader.hasNext()) { // Loop through all keys
-                    jsonReader.beginObject()
-                    jsonReader.nextName()
-                    var id = jsonReader.nextInt()
-                    jsonReader.nextName()
-                    val exchange = jsonReader.nextString()
-                    jsonReader.nextName()
-                    val pair = jsonReader.nextString()
-                    jsonReader.nextName()
-                    val active = jsonReader.nextBoolean()
-                    jsonReader.nextName()
-                    val exchangeurl = jsonReader.nextString()
-                    data.coins[coinSymbol].let {
-                        //ADD exchange to coin
-                        var exchange1 = java.util.HashMap<String, Any>()
-                        exchange1["e"] = exchange
-                        exchange1["p"] = pair
-                        exchange1["a"] = active
-                        exchangeData.add(exchange1)
-                        it?.exchanges?.add(Exchange(exchange, pair, active, exchangeurl))
-                    }
-                    jsonReader.endObject()
-//                println("id $id exchange: $exchange pair: $pair Active: $active exchangeURL: $exchangeurl")
-                }
-                jsonReader.close()
-                coin["es"] = exchangeData
-                data.db.collection("coinpairs")
-                        .add(coin)
-                        .addOnSuccessListener {
-                        }
-                data.coins.get(coinSymbol).let { println(it?.exchanges?.toString()) }
-            } else {
-                // Error handling code goes here
-            }
-
-
-            connection.disconnect()
-        }catch (e:Exception){
-
-        }
-    }
-    fun initCoins(){
-        var url = URL("https://api.cryptowat.ch/assets")
-        try {
-            val connection = url.openConnection() as HttpsURLConnection
-            connection.requestMethod = "GET"
-            if (connection.responseCode == 200) {
-                // Success
-                // Further processing here
-                println("Response: " + connection.responseCode)
-                val responseBody = connection.inputStream
-                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-                //println(responseBodyReader)
-                val jsonReader = JsonReader(responseBodyReader)
-                jsonReader.beginObject()//Start results object
-                jsonReader.nextName()
-                jsonReader.beginArray() // Start processing the JSON Array
-                while (jsonReader.hasNext()) { // Loop through all keys
-                    jsonReader.beginObject()//Start object
-                    jsonReader.nextName()
-                    val id = jsonReader.nextInt()
-                    jsonReader.nextName()
-                    val symbol = jsonReader.nextString()
-                    jsonReader.nextName()
-                    val name = jsonReader.nextString()
-                    jsonReader.nextName()
-                    val fiatLegalTender = jsonReader.nextBoolean()
-                    jsonReader.nextName()
-                    val coinURL = jsonReader.nextString()
-                    data.coins[symbol] = Asset(id, symbol, name, fiatLegalTender, coinURL)
-
-                    println("id $id symbol $symbol name: $name Fiat: $fiatLegalTender URL: $coinURL")
-                    jsonReader.endObject()
-                }
-                jsonReader.close()
-            } else {
-                // Error handling code goes here
-            }
-            connection.disconnect()
-        }catch (e:Exception){
-
+            prices[cur] ?: 0.0F
+        } catch (e: Exception) {
+            0.0F
         }
     }
 
-    fun initCoinsV2(){
-        var url = URL("https://api.cryptowat.ch/assets")
-        try {
-            val connection = url.openConnection() as HttpsURLConnection
-            connection.requestMethod = "GET"
-            if (connection.responseCode == 200) {
-                // Success
-                // Further processing here
-                println("Response: " + connection.responseCode)
-                val responseBody = connection.inputStream
-                val responseBodyReader = InputStreamReader(responseBody, "UTF-8")
-                //println(responseBodyReader)
-                val jsonReader = JsonReader(responseBodyReader)
-                jsonReader.beginObject()//Start results object
-                jsonReader.nextName()
-                jsonReader.beginArray() // Start processing the JSON Array
-                while (jsonReader.hasNext()) { // Loop through all keys
-                    jsonReader.beginObject()//Start object
-                    jsonReader.nextName()
-                    val id = jsonReader.nextInt()
-                    jsonReader.nextName()
-                    val symbol = jsonReader.nextString()
-                    jsonReader.nextName()
-                    val name = jsonReader.nextString()
-                    jsonReader.nextName()
-                    val fiatLegalTender = jsonReader.nextBoolean()
-                    jsonReader.nextName()
-                    val coinURL = jsonReader.nextString()
+    fun getUSDValue(coin: String, exchange: String): Float {
+        return getCurrentValue(coin, exchange, "usd")
+    }
 
-                    data.coins[symbol] = Asset(id, symbol, name, fiatLegalTender, coinURL)
-                    initExchangesForCoin(symbol)
-
-                    println("id $id symbol $symbol name: $name Fiat: $fiatLegalTender URL: $coinURL")
-                    jsonReader.endObject()
-                }
-                jsonReader.close()
-            } else {
-                // Error handling code goes here
-            }
-            connection.disconnect()
-        }catch (e:Exception){
-
+    fun getMarketCapV2(): CryptoList? {
+        if (data.marketCapList == null) {
+            initCoinsGecko()
         }
+        return data.marketCapList
     }
 
-    fun getDAOItemCount(context: Context): Int{
-        mDB = AssetDataBase.getInstance(context = context)
-        return mDB?.assetDataDao()?.count().toString().toInt()
-    }
-
-    fun loadFromDAO(context: Context){
-        mDB = AssetDataBase.getInstance(context = context)
-        println("Coins are the same, loading from DAO")
-        if(mDB?.assetDataDao()?.getAll() != null) {
-            for (item in mDB?.assetDataDao()?.getAll()?.iterator()!!) {
-                var asset: DataSource.Asset = Gson().fromJson(item.asset, DataSource.Asset::class.java)
-                data.coins[asset.symbol] = asset
-            }
+    fun getMarketSummary(): List<MarketData> {
+        val allCoinData = ArrayList<MarketData>()
+        data.marketCapList?.data?.forEach { datum ->
+            allCoinData.add(MarketData(
+                    "CoinGecko",
+                    (datum.symbol ?: "") + "/USD",
+                    datum.quote?.usd?.price ?: 0.0,
+                    datum.quote?.usd?.percentChange24h ?: 0.0))
         }
-    }
-    fun clearDAO(context: Context){
-        mDB = AssetDataBase.getInstance(context = context)
-        mDB?.assetDataDao()?.deleteALL()
+        return allCoinData.sortedByDescending { it.percentChange }
     }
 
-    fun getFirestoreItemCount(context: Context): Task<QuerySnapshot> {
-        return data.db.collection("assetCount").get()
-    }
-
-    fun intCoins3(context: Context): Task<QuerySnapshot> {
-        mDB = AssetDataBase.getInstance(context = context)
-        return data.db.collection("coinpairs").get(Source.DEFAULT)
-                .addOnSuccessListener {
-                    println("Updating data coins from FirebStore")
-                    it.forEach {
-                        data.coins[it.data["s"].toString()] = Asset(it.data["id"].toString().toInt(),
-                                it.data["s"].toString(),
-                                it.data["n"].toString(),
-                                it.data["flt"].toString().toBoolean(),
-                                "https://api.cryptowat.ch/assets/" + it.data["s"].toString())
-                        for(item in it.data["es"] as ArrayList< Map<String, Object>>){
-                            data.coins[it.data["s"]]?.exchanges?.add(
-                                    Exchange(item["e"].toString(),
-                                            item["p"].toString(),
-                                            item["a"].toString().toBoolean(),
-                                            "https://api.cryptowat.ch/markets/"
-                                                    + item["e"].toString() + "/"
-                                                    + item["p"].toString()
-                                    ))
-                        }
-                        // load DAO
-                        var assetData = AssetData()
-                        assetData.asset = Gson().toJson(data.coins[it.data["s"].toString()])
-                        mDB?.assetDataDao()?.insert(assetData)
-                    }
-                }
-    }
+    // Exchange lists are populated up front by initCoinsGecko; kept for API compatibility.
+    fun initExchangesForCoin(coinSymbol: String) = Unit
 }

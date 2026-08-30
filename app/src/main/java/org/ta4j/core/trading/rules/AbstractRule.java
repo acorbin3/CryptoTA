@@ -43,6 +43,6 @@ public abstract class AbstractRule extends Rule {
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        log.fine(MessageFormat.format("{}#isSatisfied({}): {}", getClass().getSimpleName(), index, isSatisfied));
+        log.fine(MessageFormat.format("{0}#isSatisfied({1}): {2}", getClass().getSimpleName(), index, isSatisfied));
     }
 }

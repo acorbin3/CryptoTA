@@ -11,7 +11,7 @@ import com.backflippedstudios.crypto_ta.R
 /**
  * Created by C0rbin on 12/2/2017.
  */
-class SimpleArrowDropdownAdapter(context: Context?, resource: Int, objects: ArrayList<String>) : ArrayAdapter<String>(context, resource, objects) {
+class SimpleArrowDropdownAdapter(context: Context?, resource: Int, objects: ArrayList<String>) : ArrayAdapter<String>(context!!, resource, objects as List<String>) {
     private val mInflator: LayoutInflater = LayoutInflater.from(context)
 
     var list: ArrayList<String> = ArrayList()
@@ -20,7 +20,7 @@ class SimpleArrowDropdownAdapter(context: Context?, resource: Int, objects: Arra
         list = objects
     }
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         var view: View
         if (convertView == null) {
             view = this.mInflator.inflate(R.layout.spinner_dropdown_main_view_with_arrow,parent,false)

@@ -1,19 +1,19 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
 
 import android.graphics.Matrix
 import android.view.MotionEvent
 import com.github.mikephil.charting.charts.Chart
 import com.github.mikephil.charting.listener.ChartTouchListener
 import com.github.mikephil.charting.listener.OnChartGestureListener
-import android.graphics.Matrix.MTRANS_X
-import android.graphics.Matrix.MSCALE_X
 import android.view.View
+import com.backflippedstudios.crypto_ta.Overlay
+import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 
 
-class MirrorChartGestureListener(val sourceKey:Overlay.Kind, var srcChart: Chart<*>, var destCharts:ArrayList<Chart<*>>): OnChartGestureListener{
+class MirrorChartGestureListener(val sourceKey: Overlay.Kind, var srcChart: Chart<*>, var destCharts:ArrayList<Chart<*>>): OnChartGestureListener{
     override fun onChartGestureStart(me: MotionEvent?, lastPerformedGesture: ChartTouchListener.ChartGesture?) {
 //        println("GestureStart $sourceKey")
-        MainActivity.data.lastMainTouchChart = sourceKey
+        DetailedAnalysisFrag.data.lastMainTouchChart = sourceKey
 //        syncCharts()
     }
 
@@ -61,8 +61,8 @@ class MirrorChartGestureListener(val sourceKey:Overlay.Kind, var srcChart: Chart
 //        println("main: $sourceKey Syncing. Num of destCharts: ${destCharts.size}")
         var srcMatrix: Matrix? = srcChart.viewPortHandler.matrixTouch
 
-        if(MainActivity.data.lastMainTouchChart != sourceKey){
-            srcMatrix = MainActivity.data.matrixLocation
+        if(DetailedAnalysisFrag.data.lastMainTouchChart != sourceKey){
+            srcMatrix = DetailedAnalysisFrag.data.matrixLocation
             srcMatrix?.getValues(srcVals)
             dstMatrix = srcChart.viewPortHandler.matrixTouch
             dstMatrix.getValues(dstVals)
@@ -71,7 +71,7 @@ class MirrorChartGestureListener(val sourceKey:Overlay.Kind, var srcChart: Chart
             dstMatrix.setValues(dstVals)
             srcChart.viewPortHandler.refresh(dstMatrix, srcChart, true)
         }else{
-            MainActivity.data.matrixLocation = srcMatrix
+            DetailedAnalysisFrag.data.matrixLocation = srcMatrix
             // get src chart translation matrix:
             srcMatrix?.getValues(srcVals)
 

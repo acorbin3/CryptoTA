@@ -246,6 +246,10 @@ public class BarChartRenderer extends BarLineScatterCandleBubbleRenderer {
                         if (!mViewPortHandler.isInBoundsY(buffer.buffer[j + 1])
                                 || !mViewPortHandler.isInBoundsLeft(x))
                             continue;
+                        // Avoiding crash for out of bounds
+                        if(dataSet.getEntryCount() < (j / 4)){
+                            break;
+                        }
 
                         BarEntry entry = dataSet.getEntryForIndex(j / 4);
                         float val = entry.getY();

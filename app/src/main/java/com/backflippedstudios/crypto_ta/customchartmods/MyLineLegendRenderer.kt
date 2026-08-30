@@ -1,4 +1,4 @@
-package com.backflippedstudios.crypto_ta
+package com.backflippedstudios.crypto_ta.customchartmods
 
 import android.graphics.Canvas
 import android.graphics.Path
@@ -55,6 +55,9 @@ class MyLineLegendRenderer(chart: LineDataProvider?, animator: ChartAnimator?, v
                 for (x in currentStartIndex + 1..currentEndIndex) {
 
                     currentEntry = dataSet.getEntryForIndex(x)
+                    if(boundaryEntry == null){
+                        break
+                    }
                     if(x >= boundaryEntry.size){
                         break
                     }

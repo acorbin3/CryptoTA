@@ -11,7 +11,7 @@ import com.backflippedstudios.crypto_ta.R
 /**
  * Created by C0rbin on 12/2/2017.
  */
-class CoinSimpleArrowDropdownAdapter(context: Context?, resource: Int, objects: ArrayList<String>) : ArrayAdapter<String>(context, resource, objects) {
+class CoinSimpleArrowDropdownAdapter(context: Context?, resource: Int, objects: ArrayList<String>) : ArrayAdapter<String>(context!!, resource, objects as List<String>) {
     private val mInflator: LayoutInflater = LayoutInflater.from(context)
 
     object data{
@@ -21,7 +21,7 @@ class CoinSimpleArrowDropdownAdapter(context: Context?, resource: Int, objects: 
         data.list = objects
     }
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         var view: View = convertView ?: this.mInflator.inflate(R.layout.spinner_dropdown_main_view_with_arrow,parent,false)
         //Remove the detailed name of the first coin
         //println(data.list[position])

@@ -1,62 +1,57 @@
 package com.backflippedstudios.crypto_ta
 
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
-import android.support.v4.app.NotificationCompat
+import android.os.Build
 import android.util.Log
-import android.content.Context
+import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
-class MyFCM: FirebaseMessagingService() {
-    override fun onMessageReceived(p0: RemoteMessage?) {
+class MyFCM : FirebaseMessagingService() {
+    override fun onMessageReceived(message: RemoteMessage) {
         val TAG = "JSA-FCM"
-        super.onMessageReceived(p0)
+        super.onMessageReceived(message)
         println("Message received!")
         //Check to see if notifications are on, if so go head and create notification
-        if (p0?.notification != null) {
-            Log.e(TAG, "Title: " + p0.notification?.title)
-            Log.e(TAG, "Body: " + p0.notification?.body)
-            sendNotification(p0.notification?.body, p0.data["link"], p0.data["openPlayStore"]?.toBoolean() )
+        if (message.notification != null) {
+            Log.e(TAG, "Title: " + message.notification?.title)
+            Log.e(TAG, "Body: " + message.notification?.body)
+            sendNotification(message.notification?.body, message.data["link"], message.data["openPlayStore"]?.toBoolean())
         }
 
-        if (p0?.data!!.isNotEmpty()) {
-            Log.e(TAG, "Data: " + p0.data)
+        if (message.data.isNotEmpty()) {
+            Log.e(TAG, "Data: " + message.data)
         }
     }
-    private fun sendNotification(body: String?, url: String?, openPlayStore: Boolean?) {
-        lateinit var intent: Intent
 
-        //If set, and the activity being launched is already running in the current task,
-        //then instead of launching a new instance of that activity, all of the other activities
-        // on top of it will be closed and this Intent will be delivered to the (now on top)
-        // old activity as a new Intent.
-        var packageInfo = this.packageManager.getPackageInfo(packageName,0)
-        println("packageInfo.versionName:${packageInfo.versionName}")
-        if(openPlayStore!!){
-            println("Open Play Store")
-            intent = Intent(this, MainActivity::class.java)
+    private fun sendNotification(body: String?, url: String?, openPlayStore: Boolean?) {
+        val intent = Intent(this, MainActivity::class.java)
+        if (openPlayStore == true) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            intent.putExtra("openPlayStore",true)
-        }
-        else{
-            intent = Intent(this,MainActivity::class.java)
+            intent.putExtra("openPlayStore", true)
+        } else {
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-            intent.putExtra("Notification",body)
+            intent.putExtra("Notification", body)
         }
 
-
-
-
-
-        var pendingIntent = PendingIntent.getActivity(this,0,intent,0/*Flag indicating that this PendingIntent can be used only once.*/)
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent,
+                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE)
         val notificationSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         val channelID = "openPlayStoreActivity"
-        var notificationBuilder = NotificationCompat.Builder(this@MyFCM,channelID)
+        val notificationManager = this.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationManager.createNotificationChannel(
+                    NotificationChannel(channelID, "CryptoTA", NotificationManager.IMPORTANCE_DEFAULT))
+        }
+
+        val notificationBuilder = NotificationCompat.Builder(this@MyFCM, channelID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Push Notification FCM")
                 .setContentText(body)
@@ -67,7 +62,6 @@ class MyFCM: FirebaseMessagingService() {
                 .setContentIntent(pendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
-        var notificationManager: NotificationManager = this.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(101,notificationBuilder.build())
+        notificationManager.notify(101, notificationBuilder.build())
     }
 }

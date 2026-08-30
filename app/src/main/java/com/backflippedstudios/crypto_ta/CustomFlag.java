@@ -4,8 +4,8 @@ import android.content.Context;
 import android.view.View;
 import android.widget.TextView;
 
-import com.skydoves.colorpickerpreference.ColorEnvelope;
-import com.skydoves.colorpickerpreference.FlagView;
+import com.skydoves.colorpickerview.ColorEnvelope;
+import com.skydoves.colorpickerview.flag.FlagView;
 
 /**
  * Developed by skydoves on 2018-02-11.
@@ -34,7 +34,11 @@ public class CustomFlag extends FlagView {
      */
     @Override
     public void onRefresh(ColorEnvelope colorEnvelope) {
-        textView.setText("#" + colorEnvelope.getColorHtml());
+        textView.setText("#" + colorEnvelope.getHexCode());
         view.setBackgroundColor(colorEnvelope.getColor());
+    }
+
+    @Override
+    public void onFlipped(Boolean isFlipped) {
     }
 }

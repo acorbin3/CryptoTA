@@ -3,7 +3,7 @@ package com.backflippedstudios.crypto_ta.xaxisformats
 import android.os.Parcel
 import android.os.Parcelable
 import com.backflippedstudios.crypto_ta.data.DataSource
-import com.backflippedstudios.crypto_ta.MainActivity
+import com.backflippedstudios.crypto_ta.frags.DetailedAnalysisFrag
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.formatter.IAxisValueFormatter
 import org.ta4j.core.Tick
@@ -16,14 +16,14 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
     //Value is the x position of what was inserted
     override fun getFormattedValue(value: Float, axis: AxisBase?): String {
         try {
-            if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts != null
-                    && MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.isEmpty == false
-                    && value.toInt() < MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.tickCount!!
-                    && MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.tickCount!! > 0) {
-    //            println("Value: $value Tick Count: ${MainActivity.data.all_ta[MainActivity.data.saved_time_period]?.ts?.tickCount}")
+            if(DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts != null
+                    && DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts?.isEmpty == false
+                    && value.toInt() < DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts?.tickCount!!
+                    && DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts?.tickCount!! > 0) {
+    //            println("Value: $value Tick Count: ${DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period]?.ts?.tickCount}")
 
 
-                    val curTick: Tick? = MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts?.getTick(value.toInt())
+                    val curTick: Tick? = DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts?.getTick(value.toInt())
                     val xLabelInterval: Int = 20
                     var timeStr = ""
 
@@ -38,7 +38,7 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
     //                println(" i $value time: ${curTick?.beginTime.toString()}" )
 
 
-                        when (MainActivity.data.saved_time_period) {
+                        when (DetailedAnalysisFrag.data.saved_time_period) {
                             DataSource.Interval._1MIN.ordinal,  DataSource.Interval._3MIN.ordinal,
                             DataSource.Interval._5MIN.ordinal,  DataSource.Interval._15MIN.ordinal,
                             DataSource.Interval._30MIN.ordinal, DataSource.Interval._1HOUR.ordinal,
@@ -63,7 +63,7 @@ class XAxisValueFormatter() : IAxisValueFormatter, Parcelable {
             }
             else{
                 println("TS was null or tickCount was bad")
-                if(MainActivity.data.all_ta[MainActivity.data.saved_time_period].ts == null){
+                if(DetailedAnalysisFrag.data.all_ta[DetailedAnalysisFrag.data.saved_time_period].ts == null){
                     println("TS was null!!")
                 }
                 return ""
